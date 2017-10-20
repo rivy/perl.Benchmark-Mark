@@ -1,0 +1,28 @@
+# NOTE: default = GLOBSTAR syntax
+# URLref: [.gitignore] http://git-scm.com/docs/gitignore @@ http://archive.is/Rk6rO @@ http://webcitation.org/6MF4Iee51
+
+# ignore META-build and GnuPG generated files
+.gpg/**
+
+# ignore build generated files
+Build
+Build.bat
+_build/**
+blib/**
+CHANGES\.log\.tmp
+Makefile.PL
+Makefile
+MANIFEST
+MANIFEST.bak
+# META.json
+# META.yml
+MYMETA.json
+MYMETA.yml
+README
+SIGNATURE
+##
+pod2htmd.tmp
+**\.pyc
+vc[1-9][0-9]+.pdb
+##
+Benchmark-Mark*

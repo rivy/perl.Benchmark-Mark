@@ -1,0 +1,63 @@
+---
+abstract: 'Simple code benchmarking/timing'
+author:
+  - 'Roy Ivy III <rivy[at]cpan[dot]org>'
+build_requires:
+  Carp: '0'
+  Config: '0'
+  Cwd: '0'
+  ExtUtils::Manifest: '1.54'
+  File::Basename: '0'
+  File::Find: '0'
+  File::Glob: '0'
+  File::Path: '0'
+  File::Spec: '0'
+  File::Spec::Functions: '0'
+  File::Which: '0'
+  FindBin: '0'
+  IO::File: '0'
+  Module::Build: '0'
+  Probe::Perl: '0'
+  TAP::Formatter::Color: '0'
+  TAP::Formatter::Console: '0'
+  TAP::Harness: '0'
+  Test::Differences: '0'
+  Test::More: '0'
+  Text::Template: '1.44'
+  perl: v5.6.1
+  version: '0.77'
+configure_requires:
+  Config: '0'
+  Cwd: '0'
+  ExtUtils::Manifest: '1.54'
+  File::Basename: '0'
+  File::Find: '0'
+  File::Glob: '0'
+  File::Path: '0'
+  File::Spec: '0'
+  File::Spec::Functions: '0'
+  File::Which: '0'
+  FindBin: '0'
+  IO::File: '0'
+  Module::Build: '0'
+  TAP::Formatter::Color: '0'
+  TAP::Formatter::Console: '0'
+  TAP::Harness: '0'
+  Text::Template: '1.44'
+  perl: v5.6.1
+  version: '0.77'
+dynamic_config: 1
+generated_by: 'Module::Build version 0.422, CPAN::Meta::Converter version 2.150010'
+license: artistic_2
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: '1.4'
+name: Benchmark::Mark
+provides:
+  Benchmark::Mark:
+    file: lib/Benchmark/Mark.pm
+    version: 0.001_1
+resources:
+  license: http://www.perlfoundation.org/artistic_license_2_0
+version: 0.001_1
+x_serialization_backend: 'CPAN::Meta::YAML version 0.018'
