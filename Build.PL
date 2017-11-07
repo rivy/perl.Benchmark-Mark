@@ -46,14 +46,17 @@ use version qw(); our $VERSION; { my $defaultVERSION = '0.4'; my $generate_alpha
 ##- config
 my %config;
 
-# config may be done via a local config file [OPTIONAL]     ## allows Build.PL to be maintained seperately and used without changes between modules
+# config must (may?) be done via a local config file [REQUIRED ... ToDO: make OPTIONAL?]     ## allows Build.PL to be maintained seperately and used without changes between modules
 $config{'rc_filename'} = 'Build.PL.config'; ##  # configuration file name (in .NET style)
 
 # Module::Build DEFAULTS [ ** DO NOT CHANGE, use the Build.PL.config to set the values ]
-$config{'module_name'} = undef;
+# * required
+$config{'dist_name'} = undef;
 $config{'dist_abstract'} = undef;
 $config{'dist_author'} = undef;
-$config{'license'} = undef;                         # must be chosen by the author of the module/distribution
+$config{'license'} = undef;
+# * optional
+$config{'dist_version_from'} = undef;               # will be constructed if not defined
 $config{'exports_aref'} = undef;                    # expected symbol table exports (no obvious default)
 $config{'requires_href'} = {};                      # module requirements (no obvious default)
 $config{'recommends_href'} = {};                    # module recommendations (no obvious default)
@@ -94,7 +97,6 @@ $config{'test_requires_href'} = {                   # module requirements to tes
     'File::Spec' => '0', 'File::Spec::Functions' => '0',
     'Module::Build' => '0',
     'Test::Differences' => '0', 'Test::More' => '0',        ## Test::More + Test::Differences
-    'Probe::Perl' => '0',
     'version' => '0.77',                                  ## version v0.77+ needed for v5.10+ extended version support & declare->()
     };
 $config{'sign'} = 'true';                           # always sign the module distribution, if possible (note: this is only used when the distribution is built/tested (or when testing the author signature ($ENV{TEST_ALL} or $ENV{TEST_SIGNATURE} are set)))
@@ -121,7 +123,7 @@ $config{'repo_commit_id_length_short'} = 6;         # length of 'short' commit I
 $config{'repo_commit_id_length_tiny'} = 4;          # length of 'tiny' commit ID ('likely' chance of uniqueness vs other commits within the repo; conflict chance ~(repo size):50,000)
 #
 $config{'custom_code_href'} = {};                   # custom code overrides from config
-$config{'custom_ENV_href'} = {};                    # custom environment overrides (set before each dispatch) for state transfer to subordinate executables [default $ENV{_BUILD_module_name} == $config{'module_name'} [SET after Build.PL.config is read, unless set within config]]
+# $config{'custom_ENV_href'} = {};                    # custom environment overrides (set before each dispatch) for state transfer to subordinate executables [default $ENV{_BUILD_dist_name} == $config{'dist_name'} [SET after Build.PL.config is read, unless set within config]]
 
 ##
 
@@ -138,9 +140,9 @@ use Module::Build;
 # Build.PL expects to be executed with CWD == the Build.PL containing directory == the main directory of the distribution
 if ( File::Spec->canonpath( $FindBin::RealBin ) ne File::Spec->canonpath( Cwd::getcwd ) ) { die "Must execute Build.PL from the base directory" }
 
-# $config{} helper variables
-$config{'lib_path'} = undef;                        # auto-generated from $config{'module_name'} during .config file parsing (should NOT be set in .config, since it is regenerated after each successful $config{'module_name'} parse in the .config parsing section)
-$config{'module_path'} = undef;                     # auto-generated from $config{'module_name'} during .config file parsing (should NOT be set in .config, since it is regenerated after each successful $config{'module_name'} parse in the .config parsing section)
+# # $config{} helper variables
+# $config{'lib_path'} = undef;                        # auto-generated from $config{'dist_name'} during .config file parsing (should NOT be set in .config, since it is regenerated after each successful $config{'dist_name'} parse in the .config parsing section)
+# $config{'module_path'} = undef;                     # auto-generated from $config{'dist_name'} during .config file parsing (should NOT be set in .config, since it is regenerated after each successful $config{'dist_name'} parse in the .config parsing section)
 
 # $config{VERSION}
 $config{'VERSION_filename'} = 'VERSION';
@@ -170,10 +172,67 @@ if ( $repo ) {
     $config{'repo_commit_describe'} = $repo->{commit_describe}();
     }
 
+# include configuration options, if the file exists
+# config file format:
+# <var_name1> => <value>...
+# ...
+# <var_nameN> => <value>...
+#
+# where each "<var_name> => <value>" follows perl hash entry definition semantics (including embedded comments)
+# ToDO: <value> can be multiline, terminated by EOF or next '<var_nameM> => ...' line
+
+my $config_filename = rel2abs($config{'rc_filename'}, dirname(rel2abs($0)));
+#print "config => ".$config_filename;
+if ( -e $config_filename )
+{
+    my $comment_chars = q{#};
+    my $fh = undef;
+    open( $fh, '<', $config_filename ) or die "Can't open '$config{'rc_filename'}': $OS_ERROR\n"; ## no critic ( RequireCarping )
+    my $line = 0;
+    while ( my $s = <$fh> )
+    {
+        $line++;
+        #eval $s;
+        my ( $key, $value );
+        if ( $s =~ m/^\s*$/ )                            { next; }    # skip any blank line
+        if ( $s =~ m/^\s*(?:[$comment_chars]|\/\/).*$/ ) { next; }    # skip any line starting with '#', ';', q{'}, or '//' as a comment line
+        if ( $s =~ m/^\s*(.*?)\s*=>\s*(.*)$/ )
+        { ## quoted values are allowed with perl quoting semantics
+            $key   = $1;
+            $value = $2;
+            if ( exists $config{$key} )
+            { ## eval $value into $config{}
+                {
+                my $ev = '$config'."{$key} = $value";
+                my $e = 0; my $w = 0;
+                $SIG{'__WARN__'} = sub { if (!$w) {chomp($w = $_[0]);} };
+                $e = !eval "$ev; 1";
+                #print "w = $w\n";
+                $SIG{'__WARN__'} = 'DEFAULT';   ## NOTE: 'IGNORE' is not supported by $SIG{'__WARN__'} [URLrefs: [perlvar - %SIG] http://perldoc.perl.org/perlvar.html#%SIG , [Perl's Warn and Die Signals] http://www.perlmonks.org/?node_id=51097 , http://www.perlmonks.org/?node_id=673637 ]
+                if ($w || $e) {warn "build: warning, malformed configuration entry: $config{'rc_filename'}, line $line\n";}
+                }
+            # if ($key eq 'module_name') {
+            #     $config{'lib_path'} = 'lib/' . join( q{/}, split( /::/xms, ( $config{'module_name'} =~ m/(.*)::.*?$/xms ? $1 : q{} ) ) );   # relative path to the module's lib location (using standard Module::Builder rules)
+            #     $config{'module_path'} = $config{lib_path} . q{/} . (split(q{::},$config{module_name}))[-1] . '.pm';                        # relative path to the usual location of a module's package file (using 'lib_path')
+            #     }
+            }
+            else { die "Unknown configuration key '$key' @ ($config{'rc_filename'}, line $line)\n"; }
+        }
+        else { die "Malformed configuration line @ ($config{'rc_filename'}, line $line)\n"; }
+    }
+    close $fh or die "Can't close '$config{'rc_filename'}' after reading: $OS_ERROR\n"; ## no critic ( RequireCarping )
+}
+
+# construct dist_version_from, if needed
+if ( ! $config{dist_version_from} )
+    {
+    $config{dist_version_from} = 'lib/' . join( q{/}, split(/-/msx, $config{'dist_name'}) ) . '.pm';
+    }
+
 # determine VERSION from file, if present
 $config{'VERSION'} = undef;
 my $VERSION_filename = rel2abs($config{'VERSION_filename'}, dirname(rel2abs($0)));
-if ( -e $VERSION_filename )
+if ( ! $config{'VERSION'} && -e $VERSION_filename )
 {
     my $fh;
     open( $fh, '<', $VERSION_filename ) or die "Can't open '$config{'VERSION_filename'}': $OS_ERROR\n"; ## no critic ( RequireCarping )
@@ -224,57 +283,6 @@ if ( -e $VERSION_filename )
 
 ##print STDERR '$config{VERSION} = '.($config{VERSION} ? $config{VERSION} : q{})."\n";
 
-# include configuration options, if the file exists
-# config file format:
-# <var_name1> => <value>...
-# ...
-# <var_nameN> => <value>...
-#
-# where each "<varName> => <value>" follows perl hash entry definition semantics (including embedded comments)
-# NOTYET: <value> can be multiline, terminated by EOF or next '<var_nameM> => ...' line
-
-my $config_filename = rel2abs($config{'rc_filename'}, dirname(rel2abs($0)));
-#print "config => ".$config_filename;
-if ( -e $config_filename )
-{
-    my $comment_chars = q{#};
-    my $fh = undef;
-    open( $fh, '<', $config_filename ) or die "Can't open '$config{'rc_filename'}': $OS_ERROR\n"; ## no critic ( RequireCarping )
-    my $line = 0;
-    while ( my $s = <$fh> )
-    {
-        $line++;
-        #eval $s;
-        my ( $key, $value );
-        if ( $s =~ m/^\s*$/ )                            { next; }    # skip any blank line
-        if ( $s =~ m/^\s*(?:[$comment_chars]|\/\/).*$/ ) { next; }    # skip any line starting with '#', ';', q{'}, or '//' as a comment line
-        if ( $s =~ m/^\s*(.*?)\s*=>\s*(.*)$/ )
-        { ## quoted values are allowed with perl quoting semantics
-            $key   = $1;
-            $value = $2;
-            if ( exists $config{$key} )
-            { ## eval $value into $config{}
-                {
-                my $ev = '$config'."{$key} = $value";
-                my $e = 0; my $w = 0;
-                $SIG{'__WARN__'} = sub { if (!$w) {chomp($w = $_[0]);} };
-                $e = !eval "$ev; 1";
-                #print "w = $w\n";
-                $SIG{'__WARN__'} = 'DEFAULT';   ## NOTE: 'IGNORE' is not supported by $SIG{'__WARN__'} [URLrefs: [perlvar - %SIG] http://perldoc.perl.org/perlvar.html#%SIG , [Perl's Warn and Die Signals] http://www.perlmonks.org/?node_id=51097 , http://www.perlmonks.org/?node_id=673637 ]
-                if ($w || $e) {warn "build: warning, malformed configuration entry: $config{'rc_filename'}, line $line\n";}
-                }
-            if ($key eq 'module_name') {
-                $config{'lib_path'} = 'lib/' . join( q{/}, split( /::/xms, ( $config{'module_name'} =~ m/(.*)::.*?$/xms ? $1 : q{} ) ) );   # relative path to the module's lib location (using standard Module::Builder rules)
-                $config{'module_path'} = $config{lib_path} . q{/} . (split(q{::},$config{module_name}))[-1] . '.pm';                        # relative path to the usual location of a module's package file (using 'lib_path')
-                }
-            }
-            else { die "Unknown configuration key '$key' @ ($config{'rc_filename'}, line $line)\n"; }
-        }
-        else { die "Malformed configuration line @ ($config{'rc_filename'}, line $line)\n"; }
-    }
-    close $fh or die "Can't close '$config{'rc_filename'}' after reading: $OS_ERROR\n"; ## no critic ( RequireCarping )
-}
-
 # SETUP PL_files from PL_folders, if needed
 if ( @{$config{'PL_folders_aref'}} > 0 )
     {
@@ -298,12 +306,13 @@ if ( @{$config{'PL_folders_aref'}} > 0 )
     }
 
 # SETUP versioned_files
-if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{module_path}, qw( bin/* ) ] };
+# if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{module_path}, qw( bin/* ) ] };
 ##if ( @{$config{'versioned_file_globs_exclude_aref'}} <= 0 ) { $config{'versioned_file_globs_exclude_aref'} = [ qw( bin/*.pl.pl ) ] };
+## ToDO: add PL_file targets ...
 
 #use Data::Dumper;
 #print Dumper( %config );
-#print Dumper( $config{'module_name'} );
+#print Dumper( $config{'dist_name'} );
 #print Dumper( $config{'os_req'} );
 
 ##
@@ -316,8 +325,8 @@ if (lc($Config{'cc'}) eq 'cl') { $config{'add_to_cleanup_aref'} = [ 'vc[1-9][0-9
 # UPDATE files for 'realclean'
 # automatically add Makefile.PL to cleanup if $config{'create_makefile_pl'} == ANY
 if ($config{'create_makefile_pl'}) { $config{'add_to_realcleanup_aref'} = [ 'Makefile.PL', @{$config{'add_to_realcleanup_aref'}} ]; }
-# # automatically add README to cleanup if $config{'create_readme'} == 'true'
-# if ($config{'create_readme'}) { $config{'add_to_realcleanup_aref'} = [ 'README', @{$config{'add_to_realcleanup_aref'}} ]; }
+# automatically add README to cleanup if $config{'create_readme'} == 'true'
+if ($config{'create_readme'}) { $config{'add_to_realcleanup_aref'} = [ 'README', @{$config{'add_to_realcleanup_aref'}} ]; }
 # # automatically add PL_files
 # my @PL_files;
 # while (my (undef, $to) = each %{$config{'PL_files_href'}}) {
@@ -327,23 +336,24 @@ if ($config{'create_makefile_pl'}) { $config{'add_to_realcleanup_aref'} = [ 'Mak
 
 ##
 
-if ( !$config{'module_name'} )   { die '$config{module_name} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
+if ( !$config{'dist_name'} && !$config{'module_name'} ) { die 'Either $config{dist_name} or $config{module_name} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
+
 if ( !$config{'dist_abstract'} ) { die '$config{dist_abstract} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
 if ( !$config{'dist_author'} )   { die '$config{dist_author} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
 if ( !$config{'license'} )       { die '$config{license} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
 
 if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//i; $config{'dist_version'} = $v; }
 
-#assert( $config{'lib_path'} ) # should be defined if $config{'module_name'} has been parsed (as asserted above)
+#assert( $config{'lib_path'} ) # should be defined if $config{'dist_name'} has been parsed (as asserted above)
 
-if ( !$config{'custom_ENV_href'}->{'_BUILD_module_name'} ) { $config{'custom_ENV_href'}->{'_BUILD_module_name'} = $config{'module_name'}; }
+# if ( !$config{'custom_ENV_href'}->{'_BUILD_dist_name'} ) { $config{'custom_ENV_href'}->{'_BUILD_dist_name'} = $config{'dist_name'}; }
 ##if ( !$config{'custom_ENV_href'}->{'_BUILD_versioned_file_globs'} ) { $config{'custom_ENV_href'}->{'_BUILD_versioned_file_globs'} = join(q{;}, ( $config{module_path}, qw( bin/*.pl bin/*.bat ) )); }   ## versioned files default to main file and all files in the bin directory
 ## ToDO: # CHANGE: '_BUILD_versioned_file_globs' => [ map {recursive_glob} qw{lib/*.pm bin/*.bat bin/*.pl} ]
 
 #use lib 'inc';
 #require Devel::AssertOS; import Devel::AssertOS ( @{$config{'assert_os_aref'}} );
 # [DONE: WORKS fine] TODO: check with CPAN testers whether the current failure output string is close enough to the 'standard' "OS unsupported\n" string so that test failures are NA for unsupported OS's
-if (defined($config{'assert_os_aref'}) && @{$config{'assert_os_aref'}}) { my $found = 0; for my $os (@{$config{'assert_os_aref'}}) { $found = 1 if $^O =~ /$os/; }; if (!$found) { die "OS unsupported : $config{module_name} is designed to be used for ( @{$config{assert_os_aref}} ) systems only - installation aborted\n";}; }; ## no critic (Variables::ProhibitPunctuationVars ErrorHandling::RequireCarping)
+if (defined($config{'assert_os_aref'}) && @{$config{'assert_os_aref'}}) { my $found = 0; for my $os (@{$config{'assert_os_aref'}}) { $found = 1 if $^O =~ /$os/; }; if (!$found) { die "OS unsupported : $config{dist_name} is designed to be used for ( @{$config{assert_os_aref}} ) systems only - installation aborted\n";}; }; ## no critic (Variables::ProhibitPunctuationVars ErrorHandling::RequireCarping)
 
 my $class = Module::Build->subclass( class => 'RIVY::Builder', code => rivy_builder_code() );
 my %optional_args = ();     # Module::Build::new() optional args (only included if they are non-empty; otherwise, if included as empty list(s)/hash(es) in new(), Module::Build carps that the specified [and needed] files are missing)
@@ -357,20 +367,22 @@ if ( keys %{$config{'xs_files_href'}} )             { %optional_args = ( %option
 my $build = $class->new(
     get_options => { color => { type => '=s' } }, ## option to output in color ## OPTION color => 0/never/no/off; 1/on/yes; always # parsed in dispatch()
 
-    module_name    => $config{'module_name'},
-    dist_abstract  => $config{'dist_abstract'},
-    dist_author    => $config{'dist_author'},
-    license        => $config{'license'},
+    dist_name            => $config{'dist_name'},
+    dist_version_from    => $config{'dist_version_from'},
+    # module_name    => $config{'module_name'},
 
-    dist_version   => $config{'dist_version'},
+    dist_abstract        => $config{'dist_abstract'},
+    dist_author          => $config{'dist_author'},
+    license              => $config{'license'},
 
-    requires       => { %{$config{'requires_href'}} },
-    recommends     => { %{$config{'recommends_href'}} },
+    dist_version         => $config{'dist_version'},
 
-    dynamic_config => $config{'dynamic_config'},
-    dynamic_config => 1,
+    requires             => { %{$config{'requires_href'}} },
+    recommends           => { %{$config{'recommends_href'}} },
 
-    build_requires => { %{$config{'build_requires_href'}} },
+    dynamic_config       => $config{'dynamic_config'},
+
+    build_requires       => { %{$config{'build_requires_href'}} },
 
     sign                 => $config{'sign'},
     recursive_test_files => $config{'recursive_test_files'},
@@ -383,7 +395,7 @@ my $build = $class->new(
 
     PL_files             => { %{$config{'PL_files_href'}} },
 
-    add_to_cleanup       => [ @{$config{'add_to_cleanup_aref'}}, ( map { join( q{-}, split(/::/xms) ) . q{-*} } $config{'module_name'} ), ( map { join( q{-}, split(/::/xms) ) . '.ppd' } $config{'module_name'} ) ],
+    add_to_cleanup       => [ @{$config{'add_to_cleanup_aref'}}, ( map { join( q{-}, split(/::/xms) ) . q{-*} } $config{'dist_name'} ), ( map { join( q{-}, split(/::/xms) ) . '.ppd' } $config{'dist_name'} ) ],
 
     add_to_realcleanup   => [ @{$config{'add_to_realcleanup_aref'}} ],
 );
@@ -828,7 +840,8 @@ $code{'get_template_vars'} = q{
         my $output_filename = shift;
         my %vars = ();
 
-        $vars{module_name} = $self->module_name;
+        $vars{dist_name} = $self->dist_name;
+        $vars{dist_name_dashed} = $vars{dist_name}; $vars{dist_name_dashed} =~ s/::/-/msxg;
         $vars{dist_abstract} = $self->dist_abstract;
         $vars{VERSION} = $self->dist_version;
         $vars{repo_type} = defined $self->notes('repo_type') ? $self->notes('repo_type') : '<repo_type?>';
@@ -845,8 +858,11 @@ $code{'get_template_vars'} = q{
         if (defined $output_filename) {
             # define file specific variables
             $vars{ME_filename} = $output_filename;
+            $vars{module_name} = q//;
+            if ($output_filename =~ m{^lib/(.*)$}) { $vars{module_name} = defined $1 ? $1 : q//; $vars{module_name} =~ s|/|::|msxg; }
+            $vars{module_name_dashed} = $vars{module_name}; $vars{module_name_dashed} =~ s/::/-/msxg;
             # $vars{ME_ID} = "$output_filename, ".$vars{commit_info};    # eg: filename, v0.0.0.1 ( [git:master] r207:97f85f62496a; AUTHOR )
-            $vars{ME_ID} = "$output_filename, $vars{VERSION}";          # eg: filename, v0.0.0.1
+            $vars{ME_ID} = ($vars{module_name} ne q// ? "$vars{module_name} ($output_filename)" : "$output_filename").", $vars{VERSION}";   # eg: filename, v0.0.0.1
             }
 
         return %vars;
@@ -947,8 +963,8 @@ $code{'dispatch'} = q{
         #$self->_call_action($self->{action});
         my $self = shift;
 };
-## ToDO: change to use $self->notes(...)
-foreach (keys %{$config{'custom_ENV_href'}}) { $code{'dispatch'} .= qq{\t\t}.'$ENV{'.$_.'} = q{'._encodeQ($config{'custom_ENV_href'}->{$_}).'};'.qq{\n}; }
+# ## ToDO: change to use $self->notes(...)
+# foreach (keys %{$config{'custom_ENV_href'}}) { $code{'dispatch'} .= qq{\t\t}.'$ENV{'.$_.'} = q{'._encodeQ($config{'custom_ENV_href'}->{$_}).'};'.qq{\n}; }
 $code{'dispatch'} .= q{
 
         my $haveWin32ConsoleANSI = eval q{use Win32::Console::ANSI; 1};
