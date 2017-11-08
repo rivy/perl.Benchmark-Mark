@@ -247,7 +247,7 @@ None reported.
     limitations on the size of data sets, special cases that are not
     (yet) handled, etc.
 
-Please report any bugs or feature requests to C<bug-#{{$module_name=~s/::/-/gr}}#@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=#{{$module_name=~s/::/-/gr}}#>. The developers will be notified, and you'll automatically be notified of progress on your bug as any changes are made.
+Please report any bugs or feature requests to C<bug-#{{$module_name_dashed}}#@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=#{{$module_name_dashed}}#>. The developers will be notified, and you'll automatically be notified of progress on your bug as any changes are made.
 
 =head2 Operational Notes
 
@@ -275,11 +275,11 @@ You can also look for further information at:
 
 =over
 
-L<https://metacpan.org/search?q=#{{$module_name=~s/::/-/gr}}#>
+L<https://metacpan.org/search?q=#{{$module_name_dashed}}#>
 
-L<http://search.cpan.org/dist/#{{$module_name=~s/::/-/gr}}#>
+L<http://search.cpan.org/dist/#{{$module_name_dashed}}#>
 
-L<http://kobesearch.cpan.org/dist/#{{$module_name=~s/::/-/gr}}#>
+L<http://kobesearch.cpan.org/dist/#{{$module_name_dashed}}#>
 
 =back
 
@@ -287,7 +287,7 @@ L<http://kobesearch.cpan.org/dist/#{{$module_name=~s/::/-/gr}}#>
 
 =over
 
-L<http://cpanratings.perl.org/dist/#{{$module_name=~s/::/-/gr}}#>
+L<http://cpanratings.perl.org/dist/#{{$module_name_dashed}}#>
 
 =back
 
@@ -295,7 +295,7 @@ L<http://cpanratings.perl.org/dist/#{{$module_name=~s/::/-/gr}}#>
 
 =over
 
-L<http://rt.cpan.org/Public/Dist/Display.html?Name=#{{$module_name=~s/::/-/gr}}#>
+L<http://rt.cpan.org/Public/Dist/Display.html?Name=#{{$module_name_dashed}}#>
 
 =back
 
@@ -303,7 +303,7 @@ L<http://rt.cpan.org/Public/Dist/Display.html?Name=#{{$module_name=~s/::/-/gr}}#
 
 =over
 
-L<http://www.cpantesters.org/show/#{{$module_name=~s/::/-/gr}}#.html>
+L<http://www.cpantesters.org/show/#{{$module_name_dashed}}#.html>
 
 =back
 
@@ -311,9 +311,9 @@ L<http://www.cpantesters.org/show/#{{$module_name=~s/::/-/gr}}#.html>
 
 =over
 
-C<[kwalitee]> L<http://cpants.perl.org/dist/kwalitee/#{{$module_name=~s/::/-/gr}}#>
+C<[kwalitee]> L<http://cpants.perl.org/dist/kwalitee/#{{$module_name_dashed}}#>
 
-C<[ used by]> L<http://cpants.perl.org/dist/used_by/#{{$module_name=~s/::/-/gr}}#>
+C<[ used by]> L<http://cpants.perl.org/dist/used_by/#{{$module_name_dashed}}#>
 
 =back
 
@@ -321,9 +321,9 @@ C<[ used by]> L<http://cpants.perl.org/dist/used_by/#{{$module_name=~s/::/-/gr}}
 
 =for possible_future
     * AnnoCPAN: Annotated CPAN documentation
-      http://annocpan.org/dist/#{{$module_name=~s/::/-/gr}}#
+      http://annocpan.org/dist/#{{$module_name_dashed}}#
     * CPANFORUM: Forum discussing #{{$module_name}}#
-      http://www.cpanforum.com/dist/#{{$module_name=~s/::/-/gr}}#
+      http://www.cpanforum.com/dist/#{{$module_name_dashed}}#
 
 =head1 TODO
 

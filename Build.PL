@@ -56,10 +56,12 @@ $config{'dist_abstract'} = undef;
 $config{'dist_author'} = undef;
 $config{'license'} = undef;
 # * optional
+$config{'dist_version'} = undef;                    # will be constructed if not defined
 $config{'dist_version_from'} = undef;               # will be constructed if not defined
+#
 $config{'exports_aref'} = undef;                    # expected symbol table exports (no obvious default)
-$config{'requires_href'} = {};                      # module requirements (no obvious default)
 $config{'recommends_href'} = {};                    # module recommendations (no obvious default)
+$config{'requires_href'} = {};                      # module requirements (no obvious default)
 #
 $config{'dynamic_config'} = 1;                      # module 'build/test/install' requires execution of Build.PL (metadata only is not enough)
 #
@@ -103,7 +105,7 @@ $config{'sign'} = 'true';                           # always sign the module dis
 $config{'create_readme'} = 'true';                  # create README from module pod
 $config{'create_makefile_pl'} = 'small';            # pass all Makefile.PL functionality to Build.PL, but requires Module::Build (ERROR if Module::Build is missing; so, use 'configure_requires=>Module::Build') [see PerlDOC: module::build::compat]
 $config{'recursive_test_files'} = undef;            # scan the ./t directory recursively for *.t perl files to execute during testing (no obvious default)
-$config{'no_index_href'} = {};                      # private files/directories/packages/namespaces; will not be indexed and listed on CPAN (no obvious default)
+$config{'no_index_href'} = { directory => [ 'inc', 't', 'xt' ] };   # private files/directories/packages/namespaces; will not be indexed and listed on CPAN
 $config{'script_files_aref'} = [];                  # alternate script/executable file locations
 $config{'pm_files_href'} = {};                      # alternate PM file locations [to help with MakeMaker transitions]
 $config{'pod_files_href'} = {};                     # alternate POD file locations [to help with MakeMaker transitions]
@@ -124,6 +126,8 @@ $config{'repo_commit_id_length_tiny'} = 4;          # length of 'tiny' commit ID
 #
 $config{'custom_code_href'} = {};                   # custom code overrides from config
 # $config{'custom_ENV_href'} = {};                    # custom environment overrides (set before each dispatch) for state transfer to subordinate executables [default $ENV{_BUILD_dist_name} == $config{'dist_name'} [SET after Build.PL.config is read, unless set within config]]
+#
+$config{'dist_repo_URL'} = undef;                   # public repository URL (no obvious default)
 
 ##
 
@@ -150,9 +154,10 @@ $config{'VERSION'} = undef;                         # generated from any existin
 
 # pull in needed custom builder code
 my %code = rivy_builder_code_subs();
-() = eval $code{'@'};                # init / prereq
-() = eval $code{repo};               # repo code
-() = eval $code{'@version_format'};  # version formatting code
+() = eval $code{'@'};                 # init / prereq
+() = eval $code{'repo'};              # repo code
+# () = eval $code{'version_from_file'}; # version
+# () = eval $code{'@version_format'};   # version formatting code
 
 $config{'repo_type'} = is_repo();
 my $repo;   # reference to hash reference to code
@@ -200,7 +205,7 @@ if ( -e $config_filename )
         { ## quoted values are allowed with perl quoting semantics
             $key   = $1;
             $value = $2;
-            if ( exists $config{$key} )
+            if ( $key =~ m/^user_/msx || exists $config{$key} )
             { ## eval $value into $config{}
                 {
                 my $ev = '$config'."{$key} = $value";
@@ -211,10 +216,13 @@ if ( -e $config_filename )
                 $SIG{'__WARN__'} = 'DEFAULT';   ## NOTE: 'IGNORE' is not supported by $SIG{'__WARN__'} [URLrefs: [perlvar - %SIG] http://perldoc.perl.org/perlvar.html#%SIG , [Perl's Warn and Die Signals] http://www.perlmonks.org/?node_id=51097 , http://www.perlmonks.org/?node_id=673637 ]
                 if ($w || $e) {warn "build: warning, malformed configuration entry: $config{'rc_filename'}, line $line\n";}
                 }
+            if ($key eq 'dist_name') {
             # if ($key eq 'module_name') {
-            #     $config{'lib_path'} = 'lib/' . join( q{/}, split( /::/xms, ( $config{'module_name'} =~ m/(.*)::.*?$/xms ? $1 : q{} ) ) );   # relative path to the module's lib location (using standard Module::Builder rules)
-            #     $config{'module_path'} = $config{lib_path} . q{/} . (split(q{::},$config{module_name}))[-1] . '.pm';                        # relative path to the usual location of a module's package file (using 'lib_path')
-            #     }
+                # $config{'lib_path'} = 'lib/' . join( q{/}, split( /::/xms, ( $config{'module_name'} =~ m/(.*)::.*?$/xms ? $1 : q{} ) ) );   # relative path to the module's lib location (using standard Module::Builder rules)
+                # $config{'module_path'} = $config{lib_path} . q{/} . (split(q{::},$config{module_name}))[-1] . '.pm';                        # relative path to the usual location of a module's package file (using 'lib_path')
+                # early construction of dist_version_from from dist_name, if not already defined
+                if ( ! $config{dist_version_from} ) { $config{dist_version_from} = 'lib/' . join( q{/}, split(/-/msx, $config{'dist_name'}) ) . '.pm'; }
+                }
             }
             else { die "Unknown configuration key '$key' @ ($config{'rc_filename'}, line $line)\n"; }
         }
@@ -223,14 +231,8 @@ if ( -e $config_filename )
     close $fh or die "Can't close '$config{'rc_filename'}' after reading: $OS_ERROR\n"; ## no critic ( RequireCarping )
 }
 
-# construct dist_version_from, if needed
-if ( ! $config{dist_version_from} )
-    {
-    $config{dist_version_from} = 'lib/' . join( q{/}, split(/-/msx, $config{'dist_name'}) ) . '.pm';
-    }
-
 # determine VERSION from file, if present
-$config{'VERSION'} = undef;
+# $config{'VERSION'} = undef;
 my $VERSION_filename = rel2abs($config{'VERSION_filename'}, dirname(rel2abs($0)));
 if ( ! $config{'VERSION'} && -e $VERSION_filename )
 {
@@ -309,6 +311,8 @@ if ( @{$config{'PL_folders_aref'}} > 0 )
 # if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{module_path}, qw( bin/* ) ] };
 ##if ( @{$config{'versioned_file_globs_exclude_aref'}} <= 0 ) { $config{'versioned_file_globs_exclude_aref'} = [ qw( bin/*.pl.pl ) ] };
 ## ToDO: add PL_file targets ...
+# if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{module_path}, values %{$config{'PL_files_href'}} ] };
+if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{dist_version_from}, qw( bin/* ) ] };
 
 #use Data::Dumper;
 #print Dumper( %config );
@@ -369,7 +373,6 @@ my $build = $class->new(
 
     dist_name            => $config{'dist_name'},
     dist_version_from    => $config{'dist_version_from'},
-    # module_name    => $config{'module_name'},
 
     dist_abstract        => $config{'dist_abstract'},
     dist_author          => $config{'dist_author'},
@@ -400,6 +403,7 @@ my $build = $class->new(
     add_to_realcleanup   => [ @{$config{'add_to_realcleanup_aref'}} ],
 );
 
+$build->notes('dist_repo_URL' => $config{'dist_repo_URL'} );
 $build->notes('exports_aref' => $config{'exports_aref'} );
 $build->notes('versioned_file_aref' => $config{'versioned_file_aref'} );
 ##$build->notes('versioned_file_globs_exclude_aref' => $config{'versioned_file_globs_exclude_aref'} );
@@ -416,16 +420,111 @@ $build->notes('VERSION' => $config{'VERSION'} );
 # push $config{repo_*} info into $build->notes
 $build->notes('repo_type' => $config{'repo_type'});
 if ( $repo ) {
-    foreach ( sort keys %config ) {
+    foreach ( keys %config ) {
         next unless /^repo_.*$/;
         $build->notes($_ => $config{$_});
         ##print "$_ => ".$build->notes($_)."\n";
         }
     }
 
+# push $config{user_*} info into $build->notes
+foreach ( keys %config ) {
+    next unless /^user_.*$/;
+    $build->notes($_ => $config{$_});
+    ##print "$_ => ".$build->notes($_)."\n";
+    }
+
 $build->create_build_script;
 
 ####
+
+sub version_f { ## ( $:major, $:minor, $:alpha ) => $:formatted version string ("boring" style)
+    my ( $major, $minor, $alpha ) = @_;
+    my $v;
+    $v  = sprintf( '%d.%03d', $major, $minor );
+    $v .= sprintf( q/_/.(($alpha == 1) ? '%d' : '%03d'), $alpha ) if (defined $alpha && $alpha ne q//);
+    return $v;
+    }
+
+sub version_canon { ## ( $:major, $:minor, $:alpha ) => $:formatted version string ("boring" style)
+    my ( $major, $minor, $alpha ) = @_;
+    my $v;
+    my $v_is_alpha = ( $alpha ne q// ) || ( $minor % 2 );
+    if ( $v_is_alpha && ($alpha eq q//) ) { $alpha = 1; }
+    return version_f( $major, $minor, $alpha );
+    }
+
+sub v_f { ## ( ... )
+    my $v = undef;
+    if ( $v =~ /(\d+)[._](\d+)(?:[\._](\d+))?(?:[\._](\d+))?/ )
+        {
+        my ( $M, $m, $a );
+        $M = $1;
+        $m = $2;
+        $a = defined $3 ? $3 : q{};
+        $v = version_f( $M, $m, $a );
+        }
+    else {
+        die "Can't parse version string ('$v')\n";  ## no critic ( RequireCarping )
+        }
+    return $v;
+}
+
+sub VERSION_from_vfile # $:file
+{
+# determine VERSION from file, if present
+# $config{'VERSION'} = undef;
+# my $VERSION_filename = rel2abs($config{'VERSION_filename'}, dirname(rel2abs($0)));
+my $VERSION = undef;
+my $VERSION_filename = shift;
+if ( -e $VERSION_filename )
+{
+    my $fh;
+    open( $fh, '<', $VERSION_filename ) or die qq{Can't open "$VERSION_filename": $OS_ERROR\n}; ## no critic ( RequireCarping )
+    my $v;
+    {# slurp entire VERSION file
+        local $/ = undef;
+        $v = <$fh>;
+    }
+    close $fh or die qq{Can't close "$VERSION_filename" after reading: $OS_ERROR\n}; ## no critic ( RequireCarping )
+
+    # remove and save any leading whitespace and/or trailing non-version text (comments, etc)
+    if ( $v =~ /^([\s\n]*)((?:\d|[._])+)((?:.|\s)*?)$/s )
+        {
+        $config{'VERSION_prefix'} = $1;
+        $v = $2;
+        $config{'VERSION_suffix'} = $3;
+        $v =~ s/(.*?)[._]*$/$1/;  # remove any trailing '.|_'
+        # print "Found version ('$v') in '$config{'VERSION_filename'}'\n";
+        }
+    else
+        {
+        print STDERR "WARN: using default version ('$v'); no version found in '$config{'VERSION_filename'}'\n";
+        }
+
+    # VERSION: Major.minor[_alpha] { if no alpha: minor is ODD => alpha (aka, developer, beta, or experimental), minor is EVEN => stable or release }
+    # * NOTE: "boring" versions are preferred (ref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17])
+    # v == M.m[_a]
+    if ( $v =~ /^(\d+)[._]*$/ ) { $v = $1 . '.0'; }
+    #
+    if ( $v =~ /(\d+)[._](\d+)(?:[\._](\d+))?(?:[\._](\d+))?/ )
+        {
+        $config{'VERSION_M'} = $1;
+        $config{'VERSION_m'} = $2;
+        $config{'VERSION_a'} = defined $3 ? $3 : q{};
+        $v = version_canon( $config{'VERSION_M'}, $config{'VERSION_m'}, $config{'VERSION_a'} );
+        }
+      else {
+        die "Can't parse version string ('$v')\n";  ## no critic ( RequireCarping )
+        }
+    $config{'VERSION'} = $v;    # VERSION == basic single-dotted perl version string
+    # print "\$VERSION = '$v'\n";
+
+    close $fh or die "Can't close '$config{'VERSION_filename'}' after reading: $OS_ERROR\n"; ## no critic ( RequireCarping )
+}
+
+##print STDERR '$config{VERSION} = '.($config{VERSION} ? $config{VERSION} : q{})."\n";
+}
 
 sub _is_const { return !eval { ($_[0]) = $_[0]; 1; }; }
 sub _encodeQQ
@@ -479,6 +578,7 @@ $code{'@'} = q{
     use File::Which;
     use IO::File;
     use Text::Template;
+    use URI::URL;
 };
 $code{'@version_format'} = q{
     # ref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17]
@@ -800,7 +900,7 @@ $code{'ACTION_PL_files'} = q{
 
         foreach my $file (sort keys %$files) {
         my $to = $files->{$file};
-        unless ($self->up_to_date( $file, $to )) {
+        unless ($self->FILES_up_to_date( $to, [ $file, 'Build.PL', 'Build.PL.config' ], { ignore_case => 1 } )) {
             $self->run_perl_script($file, [], [@$to]) or die "$file failed";
             # $self->add_to_cleanup(@$to);
             }
@@ -840,29 +940,43 @@ $code{'get_template_vars'} = q{
         my $output_filename = shift;
         my %vars = ();
 
+        my %notes = $self->notes;
+
         $vars{dist_name} = $self->dist_name;
-        $vars{dist_name_dashed} = $vars{dist_name}; $vars{dist_name_dashed} =~ s/::/-/msxg;
         $vars{dist_abstract} = $self->dist_abstract;
         $vars{VERSION} = $self->dist_version;
-        $vars{repo_type} = defined $self->notes('repo_type') ? $self->notes('repo_type') : '<repo_type?>';
-        $vars{branch} = defined $self->notes('repo_branch') ? $self->notes('repo_branch') : '<branch?>';
-        $vars{commit_author} = defined $self->notes('repo_commit_author') ? $self->notes('repo_commit_author') : '<author?>';
-        $vars{commit_describe} = defined $self->notes('repo_describe') ? $self->notes('repo_describe') : q//;
-        $vars{commit_rev} = defined $self->notes('repo_commit_number') ? $self->notes('repo_commit_number') : '0';
-        $vars{commit_id} = defined $self->notes('repo_commit_id') ? $self->notes('repo_commit_id') : '<id?>';
-        $vars{commit_id_medium} = defined $self->notes('repo_commit_id_medium') ? $self->notes('repo_commit_id_medium') : '<id?>';
-        $vars{commit_id_short} = defined $self->notes('repo_commit_id_short') ? $self->notes('repo_commit_id_short') : '<id?>';
-        $vars{commit_id_tiny} = defined $self->notes('repo_commit_id_tiny') ? $self->notes('repo_commit_id_tiny') : '<id?>';
+        $vars{repo_type} = defined $notes{'repo_type'} ? $notes{'repo_type'} : '<repo_type?>';
+        $vars{branch} = defined $notes{'repo_branch'} ? $notes{'repo_branch'} : '<branch?>';
+        $vars{commit_author} = defined $notes{'repo_commit_author'} ? $notes{'repo_commit_author'} : '<author?>';
+        $vars{commit_describe} = defined $notes{'repo_describe'} ? $notes{'repo_describe'} : q//;
+        $vars{commit_rev} = defined $notes{'repo_commit_number'} ? $notes{'repo_commit_number'} : '0';
+        $vars{commit_id} = defined $notes{'repo_commit_id'} ? $notes{'repo_commit_id'} : '<id?>';
+        $vars{commit_id_medium} = defined $notes{'repo_commit_id_medium'} ? $notes{'repo_commit_id_medium'} : '<id?>';
+        $vars{commit_id_short} = defined $notes{'repo_commit_id_short'} ? $notes{'repo_commit_id_short'} : '<id?>';
+        $vars{commit_id_tiny} = defined $notes{'repo_commit_id_tiny'} ? $notes{'repo_commit_id_tiny'} : '<id?>';
         $vars{commit_info} = "$vars{VERSION} ( [$vars{repo_type}:$vars{branch}] r$vars{commit_rev}:$vars{commit_id_medium}; $vars{commit_author} )";
+
+        if ( defined $notes{'dist_repo_URL'} ) {
+            $vars{repo_URL} = $notes{'dist_repo_URL'};
+            $vars{repo_URL_host} = (url $vars{repo_URL})->host;
+            $vars{repo_URL_path} = (url $vars{repo_URL})->path;
+            }
+
+        # user config/notes
+        foreach ( keys %notes ) {
+            next unless m/^user_/msx;
+            $vars{$_} = $notes{$_};
+            }
 
         if (defined $output_filename) {
             # define file specific variables
             $vars{ME_filename} = $output_filename;
+            $vars{ME_filename} =~ s|\\\\|/|msxg;      # to *nix style
             $vars{module_name} = q//;
-            if ($output_filename =~ m{^lib/(.*)$}) { $vars{module_name} = defined $1 ? $1 : q//; $vars{module_name} =~ s|/|::|msxg; }
+            if ($vars{ME_filename} =~ m{^lib/(.*)[.](?i:pm)$}) { $vars{module_name} = defined $1 ? $1 : q//; $vars{module_name} =~ s|/|::|msxg; }
             $vars{module_name_dashed} = $vars{module_name}; $vars{module_name_dashed} =~ s/::/-/msxg;
             # $vars{ME_ID} = "$output_filename, ".$vars{commit_info};    # eg: filename, v0.0.0.1 ( [git:master] r207:97f85f62496a; AUTHOR )
-            $vars{ME_ID} = ($vars{module_name} ne q// ? "$vars{module_name} ($output_filename)" : "$output_filename").", $vars{VERSION}";   # eg: filename, v0.0.0.1
+            $vars{ME_ID} = ($vars{module_name} ne q// ? "$vars{module_name} ($vars{ME_filename})" : "$vars{ME_filename}").", $vars{VERSION}";   # eg: MODULE (filename), v0.0.0.1
             }
 
         return %vars;

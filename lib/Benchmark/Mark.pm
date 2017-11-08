@@ -2,7 +2,7 @@
 
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 
-# lib\Benchmark\Mark.pm, 0.001_1
+# Benchmark::Mark (lib/Benchmark/Mark.pm), 0.001_1
 package Benchmark::Mark;
 
 # Module Summary
