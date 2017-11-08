@@ -38,7 +38,7 @@ before_install:
     - build-perl
     - perl -V
     - |
-      function unsupported { test -n "$OS_unsupported" && printf "\e[35mwarn: $OS_unsupported\e[0m\n"; }
+      function unsupported { test -n "$OS_unsupported" && printf "\e[35mWARN: $OS_unsupported\e[0m\n"; }
 
 install:
     # - cpanm --notest JSON::PP  # most recent JSON::PP is required to avoid JSON parsing errors during coverage testing
