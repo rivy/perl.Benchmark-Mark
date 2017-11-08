@@ -8,7 +8,10 @@ use Module::Build;
 my $mb = Module::Build->current()->expand_template( $output_filename, [ <DATA> ] );
 
 __END__
-# #{{$module_name}}#-#{{$VERSION}}#
+# #{{$dist_name}}#-#{{$VERSION}}#
 
-[![Build Status](https://travis-ci.org/rivy/perl.#{{$dist_name_dashed}}#.svg?branch=#{{$branch}}#)](https://travis-ci.org/rivy/#{{$dist_name_dashed}}#)
+[![[AppVeyor ~ build status]](https://ci.appveyor.com/api/projects/status/#{{$user_ci_appveyor_key}}#/branch/#{{$branch}}#?svg=true)](https://ci.appveyor.com/project/rivy/perl-benchmark-mark)
+[![[Travis CI ~ build status]](https://travis-ci.org#{{$repo_URL_path}}#.svg?branch=#{{$branch}}#)](https://travis-ci.org#{{$repo_URL_path}}#)
+[![[Codecov ~ status]](https://codecov.io/gh#{{$repo_URL_path}}#/branch/#{{$branch}}#/graph/badge.svg)](https://codecov.io/gh#{{$repo_URL_path}}#)
+[![[Coveralls ~ status]](https://coveralls.io/repos/github/#{{$repo_URL_path}}#/badge.svg?branch=#{{$branch}}#)](https://coveralls.io/github/#{{$repo_URL_path}}#?branch=#{{$branch}}#)
 

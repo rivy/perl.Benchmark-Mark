@@ -1,0 +1,7 @@
+# Benchmark-Mark-0.001_1
+
+[![[AppVeyor ~ build status]](https://ci.appveyor.com/api/projects/status/1ftgirtqfac8xym6/branch/master?svg=true)](https://ci.appveyor.com/project/rivy/perl-benchmark-mark)
+[![[Travis CI ~ build status]](https://travis-ci.org/rivy/perl.Benchmark-Mark.svg?branch=master)](https://travis-ci.org/rivy/perl.Benchmark-Mark)
+[![[Codecov ~ status]](https://codecov.io/gh/rivy/perl.Benchmark-Mark/branch/master/graph/badge.svg)](https://codecov.io/gh/rivy/perl.Benchmark-Mark)
+[![[Coveralls ~ status]](https://coveralls.io/repos/github//rivy/perl.Benchmark-Mark/badge.svg?branch=master)](https://coveralls.io/github//rivy/perl.Benchmark-Mark?branch=master)
+
