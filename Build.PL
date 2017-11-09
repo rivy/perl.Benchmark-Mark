@@ -441,7 +441,7 @@ if ( -e $VERSION_filename )
         $RETval{'VERSION'} = $2;
         $RETval{'VERSION_suffix'} = $3;
         $RETval{'VERSION'} =~ s/(.*?)[._]*$/$1/;  # remove any trailing '.|_'
-        print qq{Found version ('$RETval{VERSION}') in "$VERSION_filename"\n};
+        # print qq{Found version ('$RETval{VERSION}') in "$VERSION_filename"\n};
         }
     else
         {
@@ -451,7 +451,7 @@ if ( -e $VERSION_filename )
 
     ( $RETval{'VERSION_M'}, $RETval{'VERSION_m'}, $RETval{'VERSION_a'} ) = ( $RETval{'VERSION'} =~ /\d+/msxg );
     $RETval{'VERSION'} = version_f( $RETval{'VERSION_M'}, $RETval{'VERSION_m'}, $RETval{'VERSION_a'} );
-    print "\$VERSION = '$RETval{VERSION}'\n";
+    # print "\$VERSION = '$RETval{VERSION}'\n";
 }
 
 ##print STDERR '$config{VERSION} = '.($config{VERSION} ? $config{VERSION} : q{})."\n";
