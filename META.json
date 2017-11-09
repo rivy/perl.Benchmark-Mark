@@ -69,6 +69,7 @@
       },
       "test" : {
          "requires" : {
+            "CPAN::Meta" : "0",
             "Carp" : "0",
             "Config" : "0",
             "Cwd" : "0",
@@ -86,6 +87,8 @@
             "TAP::Formatter::Color" : "0",
             "TAP::Formatter::Console" : "0",
             "TAP::Harness" : "0",
+            "Test::CPAN::Meta" : "0",
+            "Test::CPAN::Meta::JSON" : "0",
             "Test::Differences" : "0",
             "Test::More" : "0",
             "Text::Template" : "1.44",
