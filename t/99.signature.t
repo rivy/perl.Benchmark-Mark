@@ -4,13 +4,15 @@ use strict;
 use warnings;
 
 {
-## no critic ( ProhibitOneArgSelect RequireLocalizedPunctuationVars )
+## no critic ( ProhibitOneArgSelect RequireLocalizedPunctuationVars ProhibitPunctuationVars )
 my $fh = select STDIN; $|++; select STDOUT; $|++; select STDERR; $|++; select $fh;  # DISABLE buffering on STDIN, STDOUT, and STDERR
 }
 
 use Test::More;     # included with perl v5.6.2+
 
 plan skip_all => 'Author tests [to run: set TEST_AUTHOR]' unless $ENV{TEST_AUTHOR} or $ENV{TEST_ALL};
+
+## no critic ( RequireCarping )
 
 my $haveSIGNATURE = (-f 'SIGNATURE');
 my $haveNonEmptySIGNATURE = (-s 'SIGNATURE');
@@ -23,20 +25,22 @@ my $haveKeyserverConnectable = eval { require Socket; Socket::inet_aton('pgp.mit
 
 my $message = q{};
 
-unless ($message || $haveModuleSignature) { $message = 'Module::Signature required to check distribution SIGNATURE'; }
-unless ($message || $haveSHA) { $message = 'Missing any supported SHA modules (Digest::SHA, Digest::SHA1, or Digest::SHA::PurePerl)'; }
-unless ($message || $haveKeyserverConnectable) { $message = 'Unable to connect to keyserver (pgp.mit.edu)'; }
-
-#plan skip_all => $message if $message;
-
 unless ($message || $haveSIGNATURE) { $message = 'Missing SIGNATURE file'; }
 unless ($message || $haveNonEmptySIGNATURE) { $message = 'Empty SIGNATURE file'; }
 
-# plan skip_all => $message if $message;
+# unless ($message || ($ENV{TEST_SIGNATURE} or $ENV{TEST_ALL})) { $message = 'Signature test [to run: set TEST_SIGNATURE]'; }
+
+unless ($message || $haveModuleSignature) { $message = 'Module::Signature required to check distribution SIGNATURE'; }
+unless ($message || $haveSHA) { $message = 'One of Digest::SHA, Digest::SHA1, or Digest::SHA::PurePerl is required'; }
+unless ($message || $haveKeyserverConnectable) { $message = 'Unable to connect to keyserver (pgp.mit.edu)'; }
+
+plan skip_all => $message if $message;
 
 plan skip_all => 'TAINT mode not supported (Module::Build is eval tainted)' if in_taint_mode();
 
 plan tests => 2;
+
+local $ENV{TEST_SIGNATURE} = (defined $ENV{TEST_SIGNATURE} && $ENV{TEST_SIGNATURE}) || 1;   # Module::Signature only considers MANIFEST.SKIP when $ENV{TEST_SIGNATURE} is set (bug?)
 
 # pull module information and subroutines via Module::Build->current()
 use Module::Build;
@@ -48,8 +52,6 @@ my $codeRef = $mb->can('my_maniskip');      # ref: http://www.perlmonks.org/?nod
 *ExtUtils::Manifest::maniskip = $codeRef;
 }}
 
-local $ENV{TEST_SIGNATURE} = (defined $ENV{TEST_SIGNATURE} && $ENV{TEST_SIGNATURE}) || 1;   # Module::Signature only considers MANIFEST.SKIP when $ENV{TEST_SIGNATURE} is set (bug?)
-
 # BUGFIX: ExtUtils::Manifest::manifind is File::Find::find() tainted; REPLACE with fixed version
 # URLref: [Find::File and taint mode] http://www.varioustopics.com/perl/219724-find-file-and-taint-mode.html
 {## no critic ( ProhibitNoWarnings )
@@ -58,8 +60,23 @@ my $codeRef = \&my_manifind;
 *ExtUtils::Manifest::manifind = $codeRef;
 }}
 
+my $DOWARN = 1;
+my $notCertified = 0;
+my $fingerprint = q{};
+# # setup warning silence to avoid loud "WARNING: This key is not certified with a trusted signature! Primary key fingerprint: [...]"
+# # :: change it to a less scary diag()
+my $verify;
+{
+local $SIG{'__WARN__'} = sub { if ($_[0] =~ /^WARNING:(.*)not certified/msx) { $notCertified = 1 }; if ($notCertified && ($_[0] =~ /^.*fingerprint:\s*(.*?)\s*$/msx)) { $fingerprint = $1 };  warn $_[0] if $DOWARN || ! $notCertified; };
+$DOWARN = 0;    # silence warnings
+$verify = Module::Signature::verify();
+$DOWARN = 1;    # re-enable warnings
+}
+
+if (($verify == Module::Signature::SIGNATURE_OK()) && $fingerprint) { diag('SIGNATURE verified, but NOT certified/trusted'); diag("signature fingerprint: [$fingerprint]"); }
+
 is($message, q{}, $message);
-is(Module::Signature::verify(), Module::Signature::SIGNATURE_OK(), 'Verify SIGNATURE over distribution');
+is($verify, Module::Signature::SIGNATURE_OK(), 'Verify SIGNATURE over distribution');
 
 
 #### SUBs ---------------------------------------------------------------------------------------##
@@ -95,6 +112,8 @@ sub my_manifind {
     # PATCH: add 'no_chdir' to File::Find::find() call [ avoids chdir taint ]
     File::Find::find({wanted => $wanted, no_chdir => 1}, $ExtUtils::Manifest::Is_MacOS ? q{:} : q{.});      ## no critic ( ProhibitPackageVars )
 
+    # my @found_names = keys %{$found};
+    # diag(qq{my_manifind: found_names = "@found_names"});
     return $found;
     }
 }}
