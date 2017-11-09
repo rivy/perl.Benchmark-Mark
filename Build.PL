@@ -86,12 +86,12 @@ $config{'configure_requires_href'} = {              # basic module requirements 
     'File::Which' => '0',
     'IO::File' => '0',
     'Text::Template' => '1.44',                             ## Text::Template v1.44+ required for minimally complete Text::Template API
+    'URI::URL' => 0,
     # * TAP::Harness hack/manipulation
     'TAP::Harness' => '0', 'TAP::Formatter::Console' => '0', 'TAP::Formatter::Color' => '0',
     };
 $config{'build_requires_href'} = {                  # module requirements to build / install (eg, `build` and `build install`)
     %{$config{'configure_requires_href'}},
-    'URI::URL' => 0,
     };
 $config{'test_requires_href'} = {                   # module requirements to test (eg, `build test`)
     %{$config{'build_requires_href'}},

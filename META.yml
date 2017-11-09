@@ -48,6 +48,7 @@ configure_requires:
   TAP::Formatter::Console: '0'
   TAP::Harness: '0'
   Text::Template: '1.44'
+  URI::URL: '0'
   perl: v5.6.1
   version: '0.77'
 dynamic_config: 1
