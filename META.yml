@@ -18,6 +18,7 @@ build_requires:
   FindBin: '0'
   IO::File: '0'
   Module::Build: '0'
+  Probe::Perl: '0'
   TAP::Formatter::Color: '0'
   TAP::Formatter::Console: '0'
   TAP::Harness: '0'
@@ -26,6 +27,7 @@ build_requires:
   Test::Differences: '0'
   Test::More: '0'
   Text::Template: '1.44'
+  URI::URL: '0'
   perl: v5.6.1
   version: '0.77'
 configure_requires:

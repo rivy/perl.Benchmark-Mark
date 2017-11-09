@@ -91,6 +91,7 @@ $config{'configure_requires_href'} = {              # basic module requirements 
     };
 $config{'build_requires_href'} = {                  # module requirements to build / install (eg, `build` and `build install`)
     %{$config{'configure_requires_href'}},
+    'URI::URL' => 0,
     };
 $config{'test_requires_href'} = {                   # module requirements to test (eg, `build test`)
     %{$config{'build_requires_href'}},
@@ -100,6 +101,7 @@ $config{'test_requires_href'} = {                   # module requirements to tes
     'ExtUtils::Manifest' => '1.54',                         ## ExtUtils::Manifest v1.54+ only needed for clients with MANIFEST file names containing internal whitespace; added here for convenience
     'File::Spec' => '0', 'File::Spec::Functions' => '0',
     'Module::Build' => '0',
+    'Probe::Perl' => '0',
     'Test::CPAN::Meta' => '0',
     'Test::CPAN::Meta::JSON' => '0',
     'Test::Differences' => '0', 'Test::More' => '0',        ## Test::More + Test::Differences
