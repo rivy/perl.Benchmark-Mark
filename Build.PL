@@ -1292,7 +1292,7 @@ $code{'ACTION_sign@_sign_dir'} = q{
             }
 
         # Would be nice if Module::Signature took a directory argument.
-        $self->_do_in_dir($dir, sub {local $Module::Signature::Quiet = 1; Module::Signature::sign()});
+        $self->_do_in_dir($dir, sub {local $Module::Signature::Quiet = 1; Module::Signature::sign( overwrite => 1 )});
     }
 };
 $code{'ACTION_sign'} = q{
