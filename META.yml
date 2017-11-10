@@ -67,6 +67,10 @@ provides:
   Benchmark::Mark:
     file: lib/Benchmark/Mark.pm
     version: 0.001_1
+recommends:
+  Time::HiRes: '0'
+requires:
+  Benchmark: '0'
 resources:
   license: http://www.perlfoundation.org/artistic_license_2_0
 version: 0.001_1

@@ -69,6 +69,14 @@
             "version" : "0.77"
          }
       },
+      "runtime" : {
+         "recommends" : {
+            "Time::HiRes" : "0"
+         },
+         "requires" : {
+            "Benchmark" : "0"
+         }
+      },
       "test" : {
          "requires" : {
             "CPAN::Meta" : "0",

@@ -57,14 +57,15 @@ sub mark;   # ToDO: ...(eg, return Win32 command line string (already includes p
 
 # Module Implementation
 
-# bootstrap Benchmark::Mark '0.001_1';
+# bootstrap Benchmark::Mark '0.001_1';    # load XS
+
+require Benchmark; Benchmark->import( ':hireswallclock' );
 
 my %timers;
 
 sub mark{
     # mark(): returns ...
-    return if not eval { require Benchmark; Benchmark->import( ':hireswallclock' ); 1 };
-    return (wantarray ? %timers : \%timers) if wantarray;
+    return (wantarray ? %timers : \%timers) if defined wantarray;
     if (defined (my $name = shift)) { my $timer_ref = ($timers{$name} ||= {});
         ${$timer_ref}{stop} = ${$timer_ref}{start} ? ( ${$timer_ref}{stop} ||= Benchmark->new ) : 0;
         ${$timer_ref}{start} ||= Benchmark->new;
