@@ -30,11 +30,16 @@
 
 use strict;
 use warnings;
+use utf8;       # script source code is utf8 compatible/encoded
+# use 5.008008; ## minimum perl version ## v5.8.8 ~ required for decent basic Unicode support
 use 5.006001; ## v5.6.1: earliest tested version ## v5.5: for AUTHOR and ABSTRACT in Makefile.PL; v5.6: for 'our', three-argument open, indirect filehandles, extended versions for 'use' [URLref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17]
 
 use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
 
 # use lib qw/ inc /;
+
+use open IN => ":crlf :encoding(utf8)", OUT => ":raw :utf8";
+use open ':std';
 
 # VERSION: major.minor.release[.build]]  { minor is ODD => alpha/beta/experimental; minor is EVEN => stable/release }
 # generate VERSION from $Version: 0.1.0.198571514 $ SCS tag
@@ -110,7 +115,7 @@ $config{'test_requires_href'} = {                   # module requirements to tes
     };
 $config{'sign'} = 'true';                           # always sign the module distribution, if possible (note: this is only used when the distribution is built/tested (or when testing the author signature ($ENV{TEST_ALL} or $ENV{TEST_SIGNATURE} are set)))
 $config{'create_readme'} = 'true';                  # create README from module pod
-$config{'create_makefile_pl'} = 'small';            # pass all Makefile.PL functionality to Build.PL, but requires Module::Build (ERROR if Module::Build is missing; so, use 'configure_requires=>Module::Build') [see PerlDOC: module::build::compat]
+$config{'create_metafile_pl'} = 'small';            # pass all Makefile.PL functionality to Build.PL, but requires Module::Build (ERROR if Module::Build is missing; so, use 'configure_requires=>Module::Build') [see PerlDOC: module::build::compat]
 $config{'recursive_test_files'} = undef;            # scan the ./t directory recursively for *.t perl files to execute during testing (no obvious default)
 $config{'no_index_href'} = { directory => [ 'inc', 't', 'xt' ] };   # private files/directories/packages/namespaces; will not be indexed and listed on CPAN
 $config{'script_files_aref'} = [];                  # alternate script/executable file locations
@@ -305,8 +310,8 @@ $config{'add_to_versioned_aref'} = [ @{$config{'add_to_versioned_aref'}}, ( grep
 if (lc($Config{'cc'}) eq 'cl') { $config{'add_to_cleanup_aref'} = [ 'vc[1-9][0-9]*.pdb', @{$config{'add_to_cleanup_aref'}} ]; }
 
 # UPDATE files for 'realclean'
-# * automatically add Makefile.PL to cleanup if $config{'create_makefile_pl'} == ANY
-if ($config{'create_makefile_pl'}) { $config{'add_to_realcleanup_aref'} = [ 'Makefile.PL', @{$config{'add_to_realcleanup_aref'}} ]; }
+# * automatically add Makefile.PL to cleanup if $config{'create_metafile_pl'} == ANY
+if ($config{'create_metafile_pl'}) { $config{'add_to_realcleanup_aref'} = [ 'Makefile.PL', @{$config{'add_to_realcleanup_aref'}} ]; }
 # * automatically add README to cleanup if $config{'create_readme'} == 'true'
 if ($config{'create_readme'}) { $config{'add_to_realcleanup_aref'} = [ 'README', @{$config{'add_to_realcleanup_aref'}} ]; }
 
@@ -368,7 +373,7 @@ my $build = $class->new(
     sign                 => $config{'sign'},
     recursive_test_files => $config{'recursive_test_files'},
     create_readme        => $config{'create_readme'},
-    create_makefile_pl   => $config{'create_makefile_pl'},
+    create_metafile_pl   => $config{'create_metafile_pl'},
 
     %optional_args,      ## configure_requires, test_requires, no_index, script_files, pm_files, pod_files, xs_files
 
@@ -465,6 +470,8 @@ $code{'@'} = q{
     use strict;
     use warnings;
     use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
+    use open IN => ":crlf :encoding(UTF-8)", OUT => ":raw :utf8";
+    use open ':std';
 
     use File::Basename;
     use File::Glob qw//;
@@ -940,7 +947,7 @@ $code{'expand_template'} = q{
 
         my $text = $template->fill_in( PACKAGE => 'TEMPLATE', HASH => \%vars );
 
-        $text =~ s/\r?[\r\n]/\r\n/gmsx if $output_filename =~ /[.](bat|cmd)$/imsx;   # 'MSWin32' BAT/CMD files must have CRLF end-of-lines
+        $text =~ s/\r*\n/\r\n/gmsx if $output_filename =~ /[.](bat|cmd)$/imsx;   # 'MSWin32' BAT/CMD files must have CRLF end-of-lines
 
         my ($vol, $dir, undef) = File::Spec->splitpath( $output_filename );
         my $output_dir = $vol.$dir;
@@ -951,7 +958,7 @@ $code{'expand_template'} = q{
         chmod $mode, $output_filename;   # enable write access; allows overwrite for files which may be previously marked read-only
 
         my $fh;
-        open( $fh, ">", $output_filename ) or die "cannot write to '$output_filename': $OS_ERROR";
+        open( $fh, "> :raw :utf8", $output_filename ) or die "cannot write to '$output_filename': $OS_ERROR";
         print $fh $text;
         close( $fh );
 
@@ -1104,6 +1111,7 @@ $code{'create_build_script'} = q{
 
         # $self->do_create_metafile if (not $self->FILES_up_to_date([ 'META.json', 'META.yml' ], [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
         @RETval = $self->SUPER::create_build_script( @_ );
+        $self->FILES_to_NIX( 'Build' );
         return wantarray ? @RETval : $RETval[0];
         }
 };
@@ -1320,14 +1328,8 @@ $code{'ACTION_sign@_sign_dir'} = q{
             $ENV{GnuPGHome} = $gpg_conf_path;
             }
 
-        {
-        # deal with PERLIO=:perlio causing "mixed" mode SIGNATURE file output
-        # ToDO: ... rewrite the SIGNATURE file to have all LF line endings
-        # local %ENV = %ENV;
-        # $ENV{PERLIO} = ':crlf';
         # Would be nice if Module::Signature took a directory argument.
         $self->_do_in_dir($dir, sub {local $Module::Signature::Quiet = 1; Module::Signature::sign( overwrite => 1 )});
-        }
     }
 };
 $code{'ACTION_sign'} = q{
@@ -1343,6 +1345,7 @@ $code{'ACTION_sign'} = q{
         $self->depends_on('distmeta');
 
         $self->_sign_dir($self->base_dir);
+        $self->FILES_to_NIX( 'SIGNATURE' );
     }
 };
 $code{'ACTION_dist'} = q{
@@ -1582,7 +1585,8 @@ $code{'ACTION_show_versions'} = q{
 
         my %versions;
         map { $versions{$_} = MM->parse_version($_) } @files;
-        print join(qq{\n}, map { $_.q{ }.$versions{$_} } @files );  # keep @files order (primary versioned file [aka $config{module}] is first)
+        # print join(qq{\n}, map { $_.q{ }.$versions{$_} } @files );  # keep @files order (primary versioned file [aka $config{module}] is first)
+        print join(qq{\n}, map { $_.q/ /.$versions{$_} } sort keys %versions );
 
         return %versions;
       }
@@ -1863,7 +1867,7 @@ $code{'ACTION_fakeinstall'} = q{
         #`ppm install $ppd_name`;
       }
 };
-$code{'ACTION_distmeta@FILES_up_to_date'} = q{
+$code{'@FILES_up_to_date'} = q{
     sub FILES_up_to_date {
         # FILES_up_to_date( \%:SELF, $|\@:DEPENDENT_FILE(s), $|\@:ANTECEDENT(s) [, \%:OPTIONAL_ARGS] ): returns $:TRUE/FALSE
         #print "_ = [ @_ ]\n";
@@ -1914,6 +1918,91 @@ $code{'ACTION_distmeta@FILES_up_to_date'} = q{
         return ( $youngest >= $oldest );
         }
 };
+$code{'@FILES_to_NIX'} = q{
+    sub FILES_to_NIX {
+        # FILES_to_NIX( \%:SELF, @:FILE(s) ) => returns undef
+        #print "_ = [ @_ ]\n";
+
+        my ($self) = shift;
+        my %opt = (
+            # ignore_case => 'auto',  # = [undef/0]/true/'auto'       ## 0/undef/false = match case always; 'auto' = match case dependent on File::Spec->case_tolerant(), o/w true = ignore case for matches
+            );
+
+        my $me = (caller(0))[3];    ## no critic ( ProhibitMagicNumbers )   ## caller(EXPR) => ($package, $filename, $line, $subroutine, $hasargs, $wantarray, $evaltext, $is_require, $hints, $bitmask) = caller($i);
+        my $opt_ref;
+        $opt_ref = pop @_ if ( @_ && (ref($_[-1]) eq 'HASH'));  ## no critic (ProhibitPostfixControls)  ## pop last argument only if it's a HASH reference (assumed to be options for our function)
+        if ($opt_ref) { for (keys %{$opt_ref}) { if (exists $opt{$_}) { $opt{$_} = $opt_ref->{$_}; } else { Carp::carp "Unknown option '$_' for function ".$me; return; } } }
+
+        #custom_code_href => { 'ACTION_test' => q[sub ACTION_test{ my ($self) = @_; $self->depends_on('build'); if ($ENV{TEST_AUTHOR} or $ENV{TEST_ALL}) { if (!File::Glob::bsd_glob('Makefile.PL',File::Glob::GLOB_NOCASE()) or !File::Glob::bsd_glob('README',File::Glob::GLOB_NOCASE()) or !File::Glob::bsd_glob('META.yml',File::Glob::GLOB_NOCASE())) {$self->depends_on('distmeta')}; if (!File::Glob::bsd_glob('SIGNATURE',File::Glob::GLOB_NOCASE())) {$self->depends_on('sign')};}; return $self->SUPER::ACTION_test;}] }
+
+        # my $GLOB_FLAGS = 0;
+        # if ($opt{ignore_case} eq 'auto') { $GLOB_FLAGS |= ( File::Spec->case_tolerant()? 0 : File::Glob::GLOB_NOCASE() ); }
+        # else { $GLOB_FLAGS |= ( $opt{ignore_case} ? File::Glob::GLOB_NOCASE() : 0 ); }        # any value resets GLOB_FLAG defaults to 0 => implies nullglob = true
+
+        my $GLOB_FLAGS = File::Glob::GLOB_NOCASE();
+
+        my @globs = @_;
+        my @files = map { File::Glob::bsd_glob( $_, $GLOB_FLAGS ) } @globs;
+
+        foreach my $file (@files) {
+            # print "FILES_to_NIX: file = $file\n";
+            next if ! -e $file;
+            next if -d $file;
+            my $fh;
+            open( $fh, '< :raw :encoding(UTF-8)', $file ) or die qq{Can't open "$file": $OS_ERROR\n}; ## no critic ( RequireCarping )
+            my $file_contents;
+            {# slurp entire file
+                local $/ = undef;
+                $file_contents = <$fh>;
+            }
+            close $fh or die qq{Can't close "$file" after reading: $OS_ERROR\n}; ## no critic ( RequireCarping )
+            $file_contents = q// if not defined $file_contents;
+            $file_contents =~ s/\r?[\r\n]/\n/gmsx;
+            open( $fh, '> :raw :utf8', $file ) or die qq{Can't open "$file": $OS_ERROR\n}; ## no critic ( RequireCarping )
+            print $fh $file_contents;
+            close $fh or die qq{Can't close "$file" after rewriting: $OS_ERROR\n}; ## no critic ( RequireCarping )
+            }
+        return;
+        }
+};
+$code{'do_create'} = q{
+    sub create_mymeta {
+        # create_mymeta( \%:SELF ) => undef
+        my $self = shift;
+        $self->SUPER::create_mymeta;
+        $self->FILES_to_NIX('MYMETA.json', 'MYMETA.yml');
+        return;
+        }
+    sub do_create_makefile_pl {
+        # create_makefile_pl( \%:SELF ) => undef
+        my $self = shift;
+        $self->SUPER::do_create_makefile_pl;
+        print "#1\n";
+        $self->FILES_to_NIX('Makefile.PL');
+        return;
+        }
+    sub do_create_readme {
+        # do_create_readme( \%:SELF ) => undef
+        my $self = shift;
+        $self->SUPER::do_create_readme;
+        $self->FILES_to_NIX('README');
+        return;
+        }
+    sub do_create_license {
+        # do_create_license( \%:SELF ) => undef
+        my $self = shift;
+        $self->SUPER::do_create_license;
+        $self->FILES_to_NIX('LICENSE');
+        return;
+        }
+    sub do_create_metafile {
+        # do_create_metafile( \%:SELF ) => undef
+        my $self = shift;
+        $self->SUPER::do_create_metafile;
+        $self->FILES_to_NIX('META.json', 'META.yml');
+        return;
+        }
+};
 $code{'ACTION_distmeta'} = q{
     sub ACTION_distmeta {
         my ($self) = @_;
@@ -1935,19 +2024,23 @@ $code{'ACTION_distmeta'} = q{
 
         # NOTE: FILES_up_to_date( $|\@ dependent_file(s), $|\@ antecedent(s) [, \%] ) {...}
 
-        $self->do_create_makefile_pl if ($self->create_makefile_pl and not $self->FILES_up_to_date('Makefile.PL', [ 'Build.PL', 'Build.PL.config', $self->_main_docfile ], { ignore_case => 1 }));  ## worry about _main_docfile(), ASSERT?
+        # do { $self->do_create_makefile_pl; FILES_to_NIX('Makefile.PL'); } if ($self->do_create_makefile_pl and not $self->FILES_up_to_date('Makefile.PL', [ 'Build.PL', 'Build.PL.config', $self->_main_docfile ], { ignore_case => 1 }));  ## worry about _main_docfile(), ASSERT?
+        # do { $self->do_create_readme; FILES_to_NIX('README'); } if ($self->create_readme and not $self->FILES_up_to_date('README', $self->dist_version_from, { ignore_case => 1 }));    ## worry about _main_docfile(), ASSERT?
+        # do { $self->do_create_license; FILES_to_NIX('LICENSE'); } if ($self->create_license and not $self->FILES_up_to_date('LICENSE', [ 'Build.PL', 'Build.PL.config', $self->_main_docfile ], { ignore_case => 1 }));  ## worry about _main_docfile(), ASSERT?
+        # do { $self->do_create_metafile; FILES_to_NIX('META.json', 'META.yml'); } if (not $self->FILES_up_to_date([ 'META.json', 'META.yml' ], [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
+        $self->create_makefile_pl if ($self->create_makefile_pl and not $self->FILES_up_to_date('Makefile.PL', [ 'Build.PL', 'Build.PL.config', $self->_main_docfile ], { ignore_case => 1 }));  ## worry about _main_docfile(), ASSERT?
         $self->do_create_readme if ($self->create_readme and not $self->FILES_up_to_date('README', $self->dist_version_from, { ignore_case => 1 }));    ## worry about _main_docfile(), ASSERT?
         $self->do_create_license if ($self->create_license and not $self->FILES_up_to_date('LICENSE', [ 'Build.PL', 'Build.PL.config', $self->_main_docfile ], { ignore_case => 1 }));  ## worry about _main_docfile(), ASSERT?
         $self->do_create_metafile if (not $self->FILES_up_to_date([ 'META.json', 'META.yml' ], [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
 
         # TODO: check file(s) for up-to-date before recreation of files (and DON'T call SUPER)
-        ## Makefile.PL [ check create_makefile_pl ... ]
-            #sub do_create_makefile_pl {
+        ## Makefile.PL [ check create_metafile_pl ... ]
+            #sub do_create_metafile_pl {
             #  my $self = shift;
             #  require Module::Build::Compat;
             #  $self->delete_filetree('Makefile.PL');
             #  $self->log_info("Creating Makefile.PL\n");
-            #  Module::Build::Compat->create_makefile_pl($self->create_makefile_pl, $self, @_);
+            #  Module::Build::Compat->create_metafile_pl($self->create_metafile_pl, $self, @_);
             #  $self->_add_to_manifest('MANIFEST', 'Makefile.PL');
             #}
 
@@ -2094,6 +2187,8 @@ $code{'ACTION_manifest@sort_manifest'} = q{
         print $fh map "$_", @sorted_lines;
         close $fh;
         chmod($mode, $manifest);
+
+        $self->FILES_to_NIX( 'MANIFEST' );
 
         $self->log_info("Sorted $manifest\n");
     }
