@@ -946,14 +946,17 @@ $code{'expand_template'} = q{
         my $output_dir = $vol.$dir;
         if (not -e $output_dir) { File::Path::mkpath( $output_dir ); }
 
-        chmod 0777, $output_filename;   # enable write access; allows overwrite for files which may be previously marked read-only
+        my $mode = ((stat $output_filename)[2] || 0777) & 07777;
+        $mode |= 0222; # "a+w" permissions
+        chmod $mode, $output_filename;   # enable write access; allows overwrite for files which may be previously marked read-only
 
         my $fh;
         open( $fh, ">", $output_filename ) or die "cannot write to '$output_filename': $OS_ERROR";
         print $fh $text;
         close( $fh );
 
-        chmod 0444, $output_filename;   # mark the output file as read-only as a reminder that the file is build-generated
+        $mode &= ~0222; # "a-w" permissions
+        chmod $mode, $output_filename;   # mark the output file as read-only as a reminder that the file is build-generated
 
         $self->log_info("ok\n");
         }
