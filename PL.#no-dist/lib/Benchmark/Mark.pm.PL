@@ -1,6 +1,4 @@
-## no critic ( CodeLayout::RequireTidyCode Modules::RequireVersionVar )
-## no critic ( Documentation::RequirePackageMatchesPodName Documentation::RequirePodSections Modules::RequireExplicitPackage ) ## ToDO: revisit/remove
-
+## no critic ( RequireEndWithOne RequireExplicitPackage RequireTidyCode RequireVersionVar )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 
 use strict;
@@ -11,7 +9,7 @@ my $output_filename = shift;
 use Module::Build;
 my $mb = Module::Build->current()->expand_template( $output_filename, [ <DATA> ] );
 
-1;
+## no critic ( Documentation::RequirePackageMatchesPodName Documentation::RequirePodSections Modules::RequireExplicitPackage ) ## ToDO: revisit/remove
 __END__
 ## no critic ( CodeLayout::RequireTidyCode Documentation::RequirePodAtEnd Documentation::RequirePodSections Modules::RequireFilenameMatchesPackage )
 

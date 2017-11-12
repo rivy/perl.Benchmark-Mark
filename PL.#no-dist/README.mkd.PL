@@ -1,10 +1,12 @@
-#(emacs/sublime) -*- mode: perl; tab-width: 4; coding: dos; -*-
+## no critic ( RequireEndWithOne RequireExplicitPackage RequireTidyCode RequireVersionVar )
+#(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
+
 use strict;
 use warnings;
 
 my $output_filename = shift;
-use Module::Build;
 
+use Module::Build;
 my $mb = Module::Build->current()->expand_template( $output_filename, [ <DATA> ] );
 
 __END__
