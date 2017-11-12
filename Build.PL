@@ -1,7 +1,7 @@
-#!perl -w   -- ## emacs -*- tab-width: 4; mode: cperl indent-tabs-mode: nil; basic-offset: 2 -*- ## (jedit) :tabsize=4:mode=perl: ## (notepad++) vim:ts=4:sw=2:et:sta:sts=2
+#!perl -w   -- ## emacs -*- tab-width: 4; mode: cperl; indent-tabs-mode: nil; basic-offset: 2 -*- ## (jedit) :tabsize=4:mode=perl: ## (notepad++) vim:ts=4:sw=2:et:sta:sts=2 ## no critic ( CodeLayout::RequireTidyCode Modules::ProhibitExcessMainComplexity )
 #$Id: Build.PL,v 0.4.1.340 ( r112:594c42f8f73c [mercurial] ) 2013/12/26 05:30:45 rivy $
 
-## no critic ( CodeLayout::RequireTidyCode CodeLayout::ProhibitHardTabs CodeLayout::ProhibitParensWithBuiltins RequireExtendedFormatting RequireLineBoundaryMatching RequireCarping )
+## no critic ( CodeLayout::ProhibitParensWithBuiltins RequireExtendedFormatting RequireLineBoundaryMatching RequireCarping )
 
 ## ToDO: expand upon assert_os to allow or disallow OS subtypes (Win9x, XP, ME, etc)
 
@@ -32,7 +32,7 @@ use strict;
 use warnings;
 use 5.006001; ## v5.6.1: earliest tested version ## v5.5: for AUTHOR and ABSTRACT in Makefile.PL; v5.6: for 'our', three-argument open, indirect filehandles, extended versions for 'use' [URLref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17]
 
-use English qw( -no_match_vars ); ##    # long Perl built-in variable names ['-no_match_vars' avoids regex performance penalty]
+use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
 
 # use lib qw/ inc /;
 
@@ -58,6 +58,7 @@ $config{'dist_abstract'} = undef;
 $config{'dist_author'} = undef;
 $config{'license'} = undef;
 # * optional
+$config{'module_name'} = undef;                     # "primary" module (for construction of README, .packlist, etc); will be calculated/constructed if not defined
 $config{'dist_version'} = undef;                    # will be constructed if not defined
 #
 $config{'exports_aref'} = undef;                    # expected symbol table exports (no obvious default)
@@ -117,14 +118,19 @@ $config{'pm_files_href'} = {};                      # alternate PM file location
 $config{'pod_files_href'} = {};                     # alternate POD file locations [to help with MakeMaker transitions]
 $config{'xs_files_href'} = {};                      # alternate XS file locations [to help with MakeMaker transitions]
 $config{'PL_files_href'} = {};                      # perl files to execute during processing (usually to generated .PL files from templates {see Module::Build::API docmentation under "PL_files"})
-$config{'PL_folders_aref'} = [ 'PL{,.#no-dist}'];   # globs matching folders used to hold templating PL files; after config file processing, entries are added into the PL_files href for each matching PL file within the template folder(s) (target file location within the distribution is set automatically, reflected from the corresponding PL file location within the PL folder to the main distribution directory)
+$config{'PL_folders_aref'} = [ 'PL{,.#no-dist}' ];  # globs matching folders used to hold templating PL files; after config file processing, entries are added into the PL_files href for each matching PL file within the template folder(s) (target file location within the distribution is set automatically, reflected from the corresponding PL file location within the PL folder to the main distribution directory)
 $config{'c_source'} = undef;                        # c source files to compile
 $config{'config_href'} = {};                        # modify Config.pm values for the build
+# clean == all files which should not be distributed and are not comitted to repo
+# realclean == all build constructed files that are not committed to repo
+# totalclean == ALL build constructed files
+# ToDO: use repo functions to automatically construct the defaults; add a built_files hash
 $config{'add_to_cleanup_aref'} = [ 'MANIFEST.bak', 'Makefile', 'Makefile.old', 'pm_to_blib', 'MYMETA.json', 'MYMETA.yml', 'SIGNATURE' ];    # globs matching extra files to clean up during "build clean"
 $config{'add_to_realcleanup_aref'} = [ 'MANIFEST' ];    # globs matching extra files to clean up during "build realclean" (note: MANIFEST is always automatically generated from MANIFEST.SKIP)
+$config{'add_to_totalcleanup_aref'} = [ 'META.json', 'META.yml' ];    # globs matching extra files to clean up during "build totalclean"
 $config{'assert_os_aref'} = [];                     # limit build to specific OS types (default = [] => any OS) [NOTE: entries are used as REGEXs for comparison VS $^O]
 #
-$config{'versioned_file_aref'} = [];                # globs matching files which should have the module version number upon a successful build (defaults to [$config{module_path}, bin/*] if not set in config)
+$config{'add_to_versioned_aref'} = [ 'bin/*' ]; # globs matching extra files which should have the distribution version number upon a successful build (these are added to the list of all files containing "provides" modules)
 #
 $config{'repo_commit_id_length_medium'} = 12;       # length of 'medium' commit ID ('excellent' chance of uniqueness vs other commits within the repo; conflict chance ~(repo size):100,000,000,000,000)
 $config{'repo_commit_id_length_short'} = 6;         # length of 'short' commit ID ('good' chance of uniqueness vs other commits within the repo; conflict chance ~(repo size):10,000,000)
@@ -157,14 +163,14 @@ if ( File::Spec->canonpath( $FindBin::RealBin ) ne File::Spec->canonpath( Cwd::g
 # pull in needed custom builder code
 my %code = rivy_builder_code_subs();
 () = eval $code{'@'};                 # init / prereq
+() = eval $code{'@version'};          # version loading / manipulation
 () = eval $code{'repo'};              # repo code
-# () = eval $code{'version_from_file'}; # version
-# () = eval $code{'@version_format'};   # version formatting code
 
 # $config{VERSION}
 # * generated from any existing VERSION file in the main directory
 $config{'VERSION_filename'} = 'VERSION';
-%config = ( %config, VERSION_from_vfile( rel2abs($config{'VERSION_filename'}, File::Spec->canonpath($FindBin::RealBin)) ) );
+%config = ( %config, version_from_vfile( rel2abs($config{'VERSION_filename'}, File::Spec->canonpath($FindBin::RealBin)) ) );
+if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//i; $config{'dist_version'} = $v; }
 
 $config{'repo_type'} = is_repo();
 my $repo;   # reference to hash reference to code
@@ -223,6 +229,10 @@ if ( -e $config_filename )
                 $SIG{'__WARN__'} = 'DEFAULT';   ## NOTE: 'IGNORE' is not supported by $SIG{'__WARN__'} [URLrefs: [perlvar - %SIG] http://perldoc.perl.org/perlvar.html#%SIG , [Perl's Warn and Die Signals] http://www.perlmonks.org/?node_id=51097 , http://www.perlmonks.org/?node_id=673637 ]
                 if ($w || $e) {warn qq{build: warning, malformed configuration entry: "$config_filename", line $line\n};}
                 }
+            if ($key eq 'dist_name') {
+                # guess module_name
+                $config{'module_name'} = $config{'dist_name'}; $config{'module_name'} =~ s/-/::/gmsx;
+                }
             # if ($key eq 'dist_name') {
             # # if ($key eq 'module_name') {
             #     # $config{'lib_path'} = 'lib/' . join( q{/}, split( /::/xms, ( $config{'module_name'} =~ m/(.*)::.*?$/xms ? $1 : q{} ) ) );   # relative path to the module's lib location (using standard Module::Builder rules)
@@ -232,7 +242,8 @@ if ( -e $config_filename )
             #     }
             if ($key eq 'VERSION_filename') {
                 # determine VERSION from file, if present
-                %config = ( %config, VERSION_from_vfile( rel2abs($config{'VERSION_filename'}, File::Spec->canonpath($FindBin::RealBin)) ) );
+                %config = ( %config, version_from_vfile( rel2abs($config{'VERSION_filename'}, File::Spec->canonpath($FindBin::RealBin)) ) );
+                if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//i; $config{'dist_version'} = $v; }
                 }
             }
             else { die qq{Unknown configuration key '$key' @ ("$config_filename", line $line)\n}; }
@@ -266,12 +277,20 @@ if ( @{$config{'PL_folders_aref'}} > 0 )
     ##print "PL files in PL_folders = [ @files ]\n";
     }
 
+# SETUP PL_target_files
+my %PL_target_files;
+while (my (undef, $to) = each %{$config{'PL_files_href'}}) {
+    $PL_target_files{$to} = 1;
+    }
+$config{'PL_target_files_href'} = { %PL_target_files };
+
 # SETUP versioned_files
-# if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{module_path}, qw( bin/* ) ] };
+# if ( @{$config{'add_to_versioned_aref'}} <= 0 ) { $config{'add_to_versioned_aref'} = [ $config{module_path}, qw( bin/* ) ] };
 ##if ( @{$config{'versioned_file_globs_exclude_aref'}} <= 0 ) { $config{'versioned_file_globs_exclude_aref'} = [ qw( bin/*.pl.pl ) ] };
 ## ToDO: add PL_file targets ... or take from META / provides {module => file / version}
-# if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{module_path}, values %{$config{'PL_files_href'}} ] };
-if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} = [ $config{dist_version_from}, qw( bin/* ) ] };
+# if ( @{$config{'add_to_versioned_aref'}} <= 0 ) { $config{'add_to_versioned_aref'} = [ $config{module_path}, values %{$config{'PL_files_href'}} ] };
+# if ( @{$config{'add_to_versioned_aref'}} <= 0 ) { $config{'add_to_versioned_aref'} = [ $config{dist_version_from}, qw( bin/* ) ] };
+$config{'add_to_versioned_aref'} = [ @{$config{'add_to_versioned_aref'}}, ( grep { defined && /[.](?:bat|cmd|pl|pm)$/imsx } keys %{$config{'PL_target_files_href'}} ) ];
 
 #use Data::Dumper;
 #print Dumper( %config );
@@ -282,28 +301,26 @@ if ( @{$config{'versioned_file_aref'}} <= 0 ) { $config{'versioned_file_aref'} =
 ##
 
 # UPDATE files for 'clean'
-# if using MSVC compiler ('cl'), add Visual C debug files ('vc[1-9][0-9]*.pdb') to cleanup
+# * if using MSVC compiler ('cl'), add Visual C debug files ('vc[1-9][0-9]*.pdb') to cleanup
 if (lc($Config{'cc'}) eq 'cl') { $config{'add_to_cleanup_aref'} = [ 'vc[1-9][0-9]*.pdb', @{$config{'add_to_cleanup_aref'}} ]; }
 
 # UPDATE files for 'realclean'
-# automatically add Makefile.PL to cleanup if $config{'create_makefile_pl'} == ANY
+# * automatically add Makefile.PL to cleanup if $config{'create_makefile_pl'} == ANY
 if ($config{'create_makefile_pl'}) { $config{'add_to_realcleanup_aref'} = [ 'Makefile.PL', @{$config{'add_to_realcleanup_aref'}} ]; }
-# automatically add README to cleanup if $config{'create_readme'} == 'true'
+# * automatically add README to cleanup if $config{'create_readme'} == 'true'
 if ($config{'create_readme'}) { $config{'add_to_realcleanup_aref'} = [ 'README', @{$config{'add_to_realcleanup_aref'}} ]; }
-# # automatically add PL_files
-# my @PL_files;
-# while (my (undef, $to) = each %{$config{'PL_files_href'}}) {
-#     push @PL_files, $to;
-#     }
-# $config{'add_to_realcleanup_aref'} = [ @PL_files, @{$config{'add_to_realcleanup_aref'}} ];
+
+# UPDATE files for 'totalclean'
+# * automatically add PL_target_files
+$config{'add_to_totalcleanup_aref'} = [ sort keys %{$config{'PL_target_files_href'}}, @{$config{'add_to_totalcleanup_aref'}} ];
 
 ##
 
-if ( !$config{'dist_name'} && !$config{'module_name'} ) { die 'Either $config{dist_name} or $config{module_name} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
+if ( ! $config{'dist_name'} && ! $config{'module_name'} ) { die 'Either $config{dist_name} or $config{module_name} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
 
-if ( !$config{'dist_abstract'} ) { die '$config{dist_abstract} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
-if ( !$config{'dist_author'} )   { die '$config{dist_author} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
-if ( !$config{'license'} )       { die '$config{license} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
+if ( ! $config{'dist_abstract'} ) { die '$config{dist_abstract} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
+if ( ! $config{'dist_author'} )   { die '$config{dist_author} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
+if ( ! $config{'license'} )       { die '$config{license} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
 
 if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//i; $config{'dist_version'} = $v; }
 
@@ -330,6 +347,8 @@ if ( keys %{$config{'xs_files_href'}} )             { %optional_args = ( %option
 my $build = $class->new(
     get_options => { color => { type => '=s' } }, ## option to output in color ## OPTION color => 0/never/no/off; 1/on/yes; always # parsed in dispatch()
 
+    module_name          => $config{'module_name'},
+
     dist_name            => $config{'dist_name'},
     dist_version_from    => $config{'dist_version_from'},
 
@@ -351,7 +370,7 @@ my $build = $class->new(
     create_readme        => $config{'create_readme'},
     create_makefile_pl   => $config{'create_makefile_pl'},
 
-    %optional_args,     ## configure_requires, no_index, script_files, pm_files, pod_files, xs_files
+    %optional_args,      ## configure_requires, test_requires, no_index, script_files, pm_files, pod_files, xs_files
 
     config               => { %{$config{'config_href'}} },
 
@@ -360,13 +379,18 @@ my $build = $class->new(
     add_to_cleanup       => [ @{$config{'add_to_cleanup_aref'}}, ( map { join( q{-}, split(/::/xms) ) . q{-*} } $config{'dist_name'} ), ( map { join( q{-}, split(/::/xms) ) . '.ppd' } $config{'dist_name'} ) ],
 
     add_to_realcleanup   => [ @{$config{'add_to_realcleanup_aref'}} ],
+
+    add_to_totalcleanup  => [ @{$config{'add_to_totalcleanup_aref'}} ],
 );
 
 $build->notes('dist_path' => $config{'dist_path'} );
 $build->notes('dist_repo_URL' => $config{'dist_repo_URL'} );
 $build->notes('exports_aref' => $config{'exports_aref'} );
-$build->notes('versioned_file_aref' => $config{'versioned_file_aref'} );
+$build->notes('add_to_versioned_aref' => $config{'add_to_versioned_aref'} );
 ##$build->notes('versioned_file_globs_exclude_aref' => $config{'versioned_file_globs_exclude_aref'} );
+
+$build->notes('PL_target_files_href' => $config{'PL_target_files_href'} );
+
 
 # VERSION file / VERSION
 $build->notes('VERSION_filename' => $config{'VERSION_filename'} );
@@ -397,66 +421,6 @@ foreach ( keys %config ) {
 $build->create_build_script;
 
 ####
-
-sub version_f { ## ( $:major, $:minor, $:alpha ) => $:formatted version string ("boring" style)
-    my ( $major, $minor, $alpha ) = @_;
-    $major = '1' if not defined $major;
-    $minor = '0' if not defined $minor || $minor eq q//;
-    $alpha = q// if not defined $alpha;
-    if (( $minor % 2 ) && ($alpha eq q//) ) { $alpha = 1; }
-    my $v;
-    $v  = sprintf( '%d', $major );
-    $v .= sprintf( q/./.((($major == 0) && ($alpha eq q//)) ? '%d' : '%03d'), $minor );
-    $v .= sprintf( q/_/.(($alpha == 1) ? '%d' : '%03d'), $alpha ) if $alpha ne q//;
-    return $v;
-    }
-
-sub VERSION_from_vfile # $:file
-{
-# determine VERSION from file, if present
-
-# VERSION: Major.minor[_alpha] { if no alpha: minor is ODD => alpha (aka, developer, beta, or experimental), minor is EVEN => stable or release }
-# * NOTE: "boring" versions are preferred (ref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17])
-
-# my $VERSION_filename = rel2abs($config{'VERSION_filename'}, dirname(rel2abs($0)));
-my $VERSION_filename = rel2abs( shift, rel2abs($0) );
-my %RETval = ();
-$RETval{'VERSION'} = undef;
-if ( -e $VERSION_filename )
-{
-    my $fh;
-    open( $fh, '<', $VERSION_filename ) or die qq{Can't open "$VERSION_filename": $OS_ERROR\n}; ## no critic ( RequireCarping )
-    my $file_contents;
-    {# slurp entire file
-        local $/ = undef;
-        $file_contents = <$fh>;
-    }
-    close $fh or die qq{Can't close "$VERSION_filename" after reading: $OS_ERROR\n}; ## no critic ( RequireCarping )
-    $file_contents = q// if not defined $file_contents;
-
-    # remove and save any leading whitespace and/or trailing non-version text (comments, etc)
-    if ( $file_contents =~ /^([\s\n]*)((?:\d|[._])+)((?:.|\s)*?)$/msx )
-        {
-        $RETval{'VERSION_prefix'} = $1;
-        $RETval{'VERSION'} = $2;
-        $RETval{'VERSION_suffix'} = $3;
-        $RETval{'VERSION'} =~ s/(.*?)[._]*$/$1/;  # remove any trailing '.|_'
-        # print qq{Found version ('$RETval{VERSION}') in "$VERSION_filename"\n};
-        }
-    else
-        {
-        $RETval{'VERSION'} = '0.001';
-        warn qq{build: warning, using default version ('$RETval{VERSION}'); no version found in "$VERSION_filename"\n};
-        }
-
-    ( $RETval{'VERSION_M'}, $RETval{'VERSION_m'}, $RETval{'VERSION_a'} ) = ( $RETval{'VERSION'} =~ /\d+/msxg );
-    $RETval{'VERSION'} = version_f( $RETval{'VERSION_M'}, $RETval{'VERSION_m'}, $RETval{'VERSION_a'} );
-    # print "\$VERSION = '$RETval{VERSION}'\n";
-}
-
-##print STDERR '$config{VERSION} = '.($config{VERSION} ? $config{VERSION} : q{})."\n";
-return %RETval;
-}
 
 sub _is_const { return !eval { ($_[0]) = $_[0]; 1; }; }
 sub _encodeQQ
@@ -500,6 +464,7 @@ my %code;
 $code{'@'} = q{
     use strict;
     use warnings;
+    use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
 
     use File::Basename;
     use File::Glob qw//;
@@ -512,24 +477,65 @@ $code{'@'} = q{
     use Text::Template;
     use URI::URL;
 };
-$code{'@version_format'} = q{
+$code{'@version'} = q{
     # ref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17]
     # NOTE: VERSION == Major.minor[_alpha] { if no alpha: minor is ODD => alpha (aka, developer, beta, or experimental), minor is EVEN => stable or release }
 
     sub version_f { ## ( $:major, $:minor, $:alpha ) => $:formatted version string ("boring" style)
         my ( $major, $minor, $alpha ) = @_;
+        $major = '1' if not defined $major;
+        $minor = '0' if not defined $minor || $minor eq q//;
+        $alpha = q// if not defined $alpha;
+        if (( $minor % 2 ) && ($alpha eq q//) ) { $alpha = 1; }
         my $v;
-        $v  = sprintf( '%d.%03d', $major, $minor );
-        $v .= sprintf( q/_/.(($alpha == 1) ? '%d' : '%03d'), $alpha ) if (defined $alpha && $alpha ne q//);
+        $v  = sprintf( '%d', $major );
+        $v .= sprintf( q/./.((($major == 0) && ($alpha eq q//)) ? '%d' : '%03d'), $minor );
+        $v .= sprintf( q/_/.(($alpha == 1) ? '%d' : '%03d'), $alpha ) if $alpha ne q//;
         return $v;
         }
 
-    sub version_canon { ## ( $:major, $:minor, $:alpha ) => $:formatted version string ("boring" style)
-        my ( $major, $minor, $alpha ) = @_;
-        my $v;
-        my $v_is_alpha = ( $alpha ne q// ) || ( $minor % 2 );
-        if ( $v_is_alpha && ($alpha eq q//) ) { $alpha = 1; }
-        return version_f( $major, $minor, $alpha );
+    sub version_from_vfile { ## ( $:file ) => %:version_info
+        # determine VERSION from file, if present
+
+        # VERSION: Major.minor[_alpha] { if no alpha: minor is ODD => alpha (aka, developer, beta, or experimental), minor is EVEN => stable or release }
+        # * NOTE: "boring" versions are preferred (ref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17])
+
+        # my $VERSION_filename = rel2abs($config{'VERSION_filename'}, dirname(rel2abs($0)));
+        my $VERSION_filename = rel2abs( shift, rel2abs($0) );
+        my %RETval = ();
+        $RETval{'VERSION'} = undef;
+        if ( -e $VERSION_filename ) {
+            my $fh;
+            open( $fh, '<', $VERSION_filename ) or die qq{Can't open "$VERSION_filename": $OS_ERROR\n}; ## no critic ( RequireCarping )
+            my $file_contents;
+            {# slurp entire file
+                local $/ = undef;
+                $file_contents = <$fh>;
+            }
+            close $fh or die qq{Can't close "$VERSION_filename" after reading: $OS_ERROR\n}; ## no critic ( RequireCarping )
+            $file_contents = q// if not defined $file_contents;
+
+            # remove and save any leading whitespace and/or trailing non-version text (comments, etc)
+            if ( $file_contents =~ /^([\s\n]*)((?:\d|[._])+)((?:.|\s)*?)$/msx ) {
+                $RETval{'VERSION_prefix'} = $1;
+                $RETval{'VERSION'} = $2;
+                $RETval{'VERSION_suffix'} = $3;
+                $RETval{'VERSION'} =~ s/(.*?)[._]*$/$1/;  # remove any trailing '.|_'
+                # print qq{Found version ('$RETval{VERSION}') in "$VERSION_filename"\n};
+                }
+            else
+                {
+                $RETval{'VERSION'} = '0.001';
+                warn qq{build: warning, using default version ('$RETval{VERSION}'); no version found in "$VERSION_filename"\n};
+                }
+
+            ( $RETval{'VERSION_M'}, $RETval{'VERSION_m'}, $RETval{'VERSION_a'} ) = ( $RETval{'VERSION'} =~ /\d+/msxg );
+            $RETval{'VERSION'} = version_f( $RETval{'VERSION_M'}, $RETval{'VERSION_m'}, $RETval{'VERSION_a'} );
+            # print "\$VERSION = '$RETval{VERSION}'\n";
+        }
+
+        ##print STDERR '$config{VERSION} = '.($config{VERSION} ? $config{VERSION} : q{})."\n";
+        return %RETval;
         }
 };
 $code{'repo'} = q{
@@ -847,18 +853,18 @@ $code{'ACTION_PL_files'} = q{
         my @files;
         my @files_to_exclude;
 
-        @globs = @{$self->notes('versioned_file_aref')};
+        @globs = @{$self->notes('add_to_versioned_aref')};
         @files = map { glob $_ } @globs;
         ##
         ####@globs = @{$self->notes('versioned_file_globs_exclude_aref')};
-        ####@files_to_exclude = map { glob $_ } @globs;
+        ####@files_to_exclude = map { File::Glob::bsd_glob($_,File::Glob::GLOB_NOCASE()) } @globs;
         ####
         ##### URLref: [How can I delete items from an array in another array in perl?] http://stackoverflow.com/a/6714829
         ####my %elements;
         ####@elements{ @files_to_exclude } = ();
         ####my @final_files = grep ! exists $elements{$_}, @files;
         ##
-        ####$self->notes('versioned_file_aref' => [ @final_files ]);
+        ####$self->notes('add_to_versioned_aref' => [ @final_files ]);
 
         $self->notes('versioned_filenames_aref' => [ @files ]);
 
@@ -926,23 +932,30 @@ $code{'expand_template'} = q{
 
         my %vars = $self->get_template_vars( $output_filename );
 
-        use English qw( -no_match_vars ); ##    # long Perl built-in variable names ['-no_match_vars' avoids regex performance penalty]
+        use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
 
-        print("Building $output_filename (from $0) ... ");
+        $self->log_info("Building $output_filename (from $0) ... ");
 
         my $template = Text::Template->new(TYPE => 'ARRAY', SOURCE => $template_aref, DELIMITERS => [ $delim_start, $delim_stop ]) or die $Text::Template::ERROR;
 
         my $text = $template->fill_in( PACKAGE => 'TEMPLATE', HASH => \%vars );
 
+        $text =~ s/\r?[\r\n]/\r\n/gmsx if $output_filename =~ /[.](bat|cmd)$/imsx;   # 'MSWin32' BAT/CMD files must have CRLF end-of-lines
+
         my ($vol, $dir, undef) = File::Spec->splitpath( $output_filename );
         my $output_dir = $vol.$dir;
         if (not -e $output_dir) { File::Path::mkpath( $output_dir ); }
+
+        chmod 0777, $output_filename;   # enable write access; allows overwrite for files which may be previously marked read-only
 
         my $fh;
         open( $fh, ">", $output_filename ) or die "cannot write to '$output_filename': $OS_ERROR";
         print $fh $text;
         close( $fh );
-        print "ok\n";
+
+        chmod 0444, $output_filename;   # mark the output file as read-only as a reminder that the file is build-generated
+
+        $self->log_info("ok\n");
         }
 };
 $code{'ACTION_build'} = q{
@@ -950,10 +963,23 @@ $code{'ACTION_build'} = q{
         my $self = shift;
 
         my @RETval = $self->SUPER::ACTION_build( @_ );
+        $self->depends_on('meta');
 
         $self->create_note_versioned_filenames;
 
         return wantarray ? @RETval : $RETval[0];
+      }
+};
+$code{'ACTION_meta'} = q{
+    sub ACTION_meta {
+        my $self = shift;
+
+        # my @RETval = $self->SUPER::ACTION_meta( @_ );
+
+        $self->depends_on('build');
+        $self->do_create_metafile if (not $self->FILES_up_to_date([ 'META.json', 'META.yml' ], [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from, sort keys %{$self->notes('PL_target_files_href')} ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
+
+        # return wantarray ? @RETval : $RETval[0];
       }
 };
 $code{'get_metadata'} = q{
@@ -1073,8 +1099,8 @@ $code{'create_build_script'} = q{
 
         my @RETval;
 
+        # $self->do_create_metafile if (not $self->FILES_up_to_date([ 'META.json', 'META.yml' ], [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
         @RETval = $self->SUPER::create_build_script( @_ );
-        $self->do_create_metafile if (not $self->FILES_up_to_date([ 'META.json', 'META.yml' ], [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
         return wantarray ? @RETval : $RETval[0];
         }
 };
@@ -1291,8 +1317,14 @@ $code{'ACTION_sign@_sign_dir'} = q{
             $ENV{GnuPGHome} = $gpg_conf_path;
             }
 
+        {
+        # deal with PERLIO=:perlio causing "mixed" mode SIGNATURE file output
+        # ToDO: ... rewrite the SIGNATURE file to have all LF line endings
+        # local %ENV = %ENV;
+        # $ENV{PERLIO} = ':crlf';
         # Would be nice if Module::Signature took a directory argument.
         $self->_do_in_dir($dir, sub {local $Module::Signature::Quiet = 1; Module::Signature::sign( overwrite => 1 )});
+        }
     }
 };
 $code{'ACTION_sign'} = q{
@@ -1494,9 +1526,9 @@ $code{'ACTION_upload_cpan'} = q{
         my ($self) = @_;
 
         $self->depends_on('dist');
-        print "Distribution built successfully.\n";
+        $self->log_info("Distribution built successfully.\n");
         $self->depends_on('disttestall');
-        print "Testing of distribution completed successfully.\n";
+        $self->log_info("Testing of distribution completed successfully.\n");
 
         my $devnull = File::Spec->devnull();
         my $haveCPANUpload = ( qx{cpan-upload --help 2>$devnull} =~ /\scpan-upload\s/m );
@@ -1605,6 +1637,9 @@ $code{'ACTION_realclean'} = q{
         #print 'realcleanup_aref = {'.join(':', @{$self->{properties}{add_to_realcleanup}})."}\n";
         $self->add_to_cleanup(@{$self->{properties}{add_to_realcleanup}});
 
+        my @cleanup_files = $self->cleanup();
+        $self->log_debug("realclean: cleanup = [ @cleanup_files ]\n");
+
         $self->SUPER::ACTION_realclean();
 
         my $OS_no_case = File::Spec->case_tolerant();
@@ -1635,6 +1670,14 @@ $code{'ACTION_realclean'} = q{
                 $self->delete_filetree($self->build_script . '.bat');
                 }
             }
+        }
+};
+$code{'ACTION_totalclean'} = q{
+    sub ACTION_totalclean {
+        ## clean out ALL build generated files
+        my ($self) = @_;
+        $self->add_to_cleanup(@{$self->{properties}{add_to_totalcleanup}});
+        $self->ACTION_realclean();
         }
 };
 $code{'ACTION_ppmdist@ppm_name'} = q{
@@ -1839,7 +1882,7 @@ $code{'ACTION_distmeta@FILES_up_to_date'} = q{
         else { $GLOB_FLAGS |= ( $opt{ignore_case} ? File::Glob::GLOB_NOCASE() : 0 ); }        # any value resets GLOB_FLAG defaults to 0 => implies nullglob = true
 
         #my @dependent_files = map { File::Glob::bsd_glob( $_, $GLOB_FLAGS ) } ( ref $_[0] ? @{shift @_} : shift );
-        #my @antecedents = map { File::Glob::bsd_glob( $_, $GLOB_FLAGS ) } ( ref $_[0] ? @{shift @_} : shift );
+        #my @antecedents = map { if ($_) { File::Glob::bsd_glob( $_, $GLOB_FLAGS ) } } ( ref $_[0] ? @{shift @_} : shift );
 
         #if (not @dependent_files) { return 0; }     # no dependency files found
 
@@ -1847,22 +1890,23 @@ $code{'ACTION_distmeta@FILES_up_to_date'} = q{
         my @files = ( ref $_[0] ? @{shift @_} : shift );    # dependent_files
         for my $file ( @files )
             {
+            next if not defined $file;
             my @globs = File::Glob::bsd_glob( $file, $GLOB_FLAGS );
             if (not @globs) { return 0; }   # ALL dependent file entries must return at least one file or return NOT FILES_up_to_date
             push @dependent_files, @globs;
             }
-        my @antecedents = map { File::Glob::bsd_glob( $_, $GLOB_FLAGS ) } ( ref $_[0] ? @{shift @_} : shift );      #??: design?: should missing antecedents cause a NOT FILES_up_to_date return?
+        my @antecedents = map { File::Glob::bsd_glob( $_, $GLOB_FLAGS ) } grep { defined } ( ref $_[0] ? @{(shift)} : shift );      #??: design?: should missing antecedents cause a NOT FILES_up_to_date return?
 
         my $oldest = @dependent_files ? -M $dependent_files[0] : 0;
         my $youngest = @antecedents ? -M $antecedents[0]: 0;
         for ( @dependent_files ) { if (-M $_ > $oldest) { $oldest = -M $_; } }
         for ( @antecedents ) { if (-M $_ < $youngest) { $youngest = -M $_; } }
 
-        #print "dep = [ @dependent_files ]\n";
-        #print "ant = [ @antecedents ]\n";
-        #print "oldest = ".24*60*60*$oldest."\n";
-        #print "youngest = ".24*60*60*$youngest."\n";
-        #print "youngest >= oldest = ".($youngest >= $oldest)."\n";
+        # print 'dep['.scalar(@dependent_files)."] = [ @dependent_files ]\n";
+        # print 'ant['.scalar(@antecedents)."] = [ @antecedents ]\n";
+        # print "oldest = ".24*60*60*$oldest."\n";
+        # print "youngest = ".24*60*60*$youngest."\n";
+        # print "youngest >= oldest = ".($youngest >= $oldest)."\n";
 
         return ( $youngest >= $oldest );
         }
@@ -1891,7 +1935,7 @@ $code{'ACTION_distmeta'} = q{
         $self->do_create_makefile_pl if ($self->create_makefile_pl and not $self->FILES_up_to_date('Makefile.PL', [ 'Build.PL', 'Build.PL.config', $self->_main_docfile ], { ignore_case => 1 }));  ## worry about _main_docfile(), ASSERT?
         $self->do_create_readme if ($self->create_readme and not $self->FILES_up_to_date('README', $self->dist_version_from, { ignore_case => 1 }));    ## worry about _main_docfile(), ASSERT?
         $self->do_create_license if ($self->create_license and not $self->FILES_up_to_date('LICENSE', [ 'Build.PL', 'Build.PL.config', $self->_main_docfile ], { ignore_case => 1 }));  ## worry about _main_docfile(), ASSERT?
-        $self->do_create_metafile if (not $self->FILES_up_to_date('META.yml', [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
+        $self->do_create_metafile if (not $self->FILES_up_to_date([ 'META.json', 'META.yml' ], [ 'Build.PL', 'Build.PL.config', 'LICENSE', $self->dist_version_from ], { ignore_case => 1 }));   ## worry about _main_docfile(), ASSERT?
 
         # TODO: check file(s) for up-to-date before recreation of files (and DON'T call SUPER)
         ## Makefile.PL [ check create_makefile_pl ... ]
