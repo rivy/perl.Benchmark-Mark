@@ -1,7 +1,5 @@
 ## no critic ( CodeLayout::RequireTidyCode Documentation::RequirePodAtEnd Documentation::RequirePodSections Modules::RequireFilenameMatchesPackage )
-
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
-
 # Benchmark::Mark (lib/Benchmark/Mark.pm), 0.001_1
 package Benchmark::Mark;
 
