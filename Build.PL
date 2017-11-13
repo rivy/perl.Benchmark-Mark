@@ -38,8 +38,8 @@ use English qw( -no_match_vars ); ## enable long-form built-in variable names; '
 
 # use lib qw/ inc /;
 
-use open IN => ":crlf :encoding(utf8)", OUT => ":raw :utf8";
-use open ':std';
+# use open IN => ":crlf :encoding(utf8)", OUT => ":raw :utf8";
+# use open ':std';
 
 # VERSION: major.minor.release[.build]]  { minor is ODD => alpha/beta/experimental; minor is EVEN => stable/release }
 # generate VERSION from $Version: 0.1.0.198571514 $ SCS tag
@@ -470,8 +470,8 @@ $code{'@'} = q{
     use strict;
     use warnings;
     use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
-    use open IN => ":crlf :encoding(UTF-8)", OUT => ":raw :utf8";
-    use open ':std';
+    # use open IN => ":crlf :encoding(UTF-8)", OUT => ":raw :utf8";
+    # use open ':std';
 
     use File::Basename;
     use File::Glob qw//;
