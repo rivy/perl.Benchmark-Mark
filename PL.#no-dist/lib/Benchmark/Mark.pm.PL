@@ -9,28 +9,28 @@ my $output_filename = shift;
 
 use Module::Build;
 
-binmode DATA, ':raw:utf8'; # utf8 + avoid EOL translations ## no critic ( RequireEncodingWithUTF8Layer )
+binmode DATA, ':raw:utf8';    # utf8 + avoid EOL translations ## no critic ( RequireEncodingWithUTF8Layer )
 
-() = Module::Build->current()->expand_template( $output_filename, [ <DATA> ] );
+() = Module::Build->current()->expand_template( $output_filename, [<DATA>] );
 
 ## no critic ( Documentation::RequirePackageMatchesPodName Documentation::RequirePodSections Modules::RequireExplicitPackage ) ## ToDO: revisit/remove
-__END__
+__DATA__
 ## no critic ( CodeLayout::RequireTidyCode Documentation::RequirePodAtEnd Documentation::RequirePodSections Modules::RequireFilenameMatchesPackage )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
-# #{{$ME_ID}}#
-package #{{$module_name}}#;
+# ":{{$ME_ID}}:"
+package ":{{$module_name}}:";
 
 # Module Summary
 
 =head1 NAME
 
-#{{$module_name}}# - #{{$dist_abstract}}#
+":{{$module_name}}:" - ":{{$dist_abstract}}:"
 
 =head1 VERSION
 
 =over
 
- $#{{$module_name}}#::VERSION = "#{{$VERSION}}#";
+ $":{{$module_name}}:"::VERSION = "":{{$VERSION}}:"";
 
 =back
 
@@ -45,7 +45,7 @@ use 5.008008;       # earliest tested perl version (v5.8.8); v5.6.1 is no longer
 # * NOTE: "boring" versions are preferred (see: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL)
 ## no critic ( RequireConstantVersion )
 {
-our $VERSION = '#{{$VERSION}}#';    # VERSION definition
+our $VERSION = '":{{$VERSION}}:"';    # VERSION definition
 $VERSION =~ s/_//msxg;     # numify VERSION (needed for alpha versions)
 }
 
@@ -72,7 +72,7 @@ sub mark;   # ToDO: ...(eg, return Win32 command line string (already includes p
 
 # Module Implementation
 
-# bootstrap #{{$module_name}}# '#{{$VERSION}}#';    # load XS
+# bootstrap ":{{$module_name}}:" '":{{$VERSION}}:"';    # load XS
 
 require Benchmark; Benchmark->import( ':hireswallclock' );
 
@@ -218,7 +218,7 @@ Start/stop and retrive timers ...
     the module is part of the standard Perl distribution, part of the
     module's distribution, or must be installed separately. ]
 
-C<#{{$module_name}}#> requires C<Carp::Assert> for internal error checking and warnings.
+C<":{{$module_name}}:"> requires C<Carp::Assert> for internal error checking and warnings.
 
 The optional modules C<Win32>, C<Win32::Security::SID>, and C<Win32::TieRegistry> are recommended to allow full glob tilde expansions
 for user home directories (eg, C<~administrator> expands to C<C:\Users\Administrator>). Expansion of the single tilde (C<~>) has a backup
@@ -248,7 +248,7 @@ None reported.
     limitations on the size of data sets, special cases that are not
     (yet) handled, etc.
 
-Please report any bugs or feature requests to C<bug-#{{$module_name_dashed}}#@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=#{{$module_name_dashed}}#>. The developers will be notified, and you'll automatically be notified of progress on your bug as any changes are made.
+Please report any bugs or feature requests to C<bug-":{{$module_name_dashed}}:"@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=":{{$module_name_dashed}}:">. The developers will be notified, and you'll automatically be notified of progress on your bug as any changes are made.
 
 =head2 Operational Notes
 
@@ -264,7 +264,7 @@ You can find documentation for this module with the perldoc command.
 
 =over
 
- perldoc #{{$module_name}}#
+ perldoc ":{{$module_name}}:"
 
 =back
 
@@ -276,11 +276,11 @@ You can also look for further information at:
 
 =over
 
-L<https://metacpan.org/search?q=#{{$module_name_dashed}}#>
+L<https://metacpan.org/search?q=":{{$module_name_dashed}}:">
 
-L<http://search.cpan.org/dist/#{{$module_name_dashed}}#>
+L<http://search.cpan.org/dist/":{{$module_name_dashed}}:">
 
-L<http://kobesearch.cpan.org/dist/#{{$module_name_dashed}}#>
+L<http://kobesearch.cpan.org/dist/":{{$module_name_dashed}}:">
 
 =back
 
@@ -288,7 +288,7 @@ L<http://kobesearch.cpan.org/dist/#{{$module_name_dashed}}#>
 
 =over
 
-L<http://cpanratings.perl.org/dist/#{{$module_name_dashed}}#>
+L<http://cpanratings.perl.org/dist/":{{$module_name_dashed}}:">
 
 =back
 
@@ -296,7 +296,7 @@ L<http://cpanratings.perl.org/dist/#{{$module_name_dashed}}#>
 
 =over
 
-L<http://rt.cpan.org/Public/Dist/Display.html?Name=#{{$module_name_dashed}}#>
+L<http://rt.cpan.org/Public/Dist/Display.html?Name=":{{$module_name_dashed}}:">
 
 =back
 
@@ -304,7 +304,7 @@ L<http://rt.cpan.org/Public/Dist/Display.html?Name=#{{$module_name_dashed}}#>
 
 =over
 
-L<http://www.cpantesters.org/show/#{{$module_name_dashed}}#.html>
+L<http://www.cpantesters.org/show/":{{$module_name_dashed}}:".html>
 
 =back
 
@@ -312,9 +312,9 @@ L<http://www.cpantesters.org/show/#{{$module_name_dashed}}#.html>
 
 =over
 
-C<[kwalitee]> L<http://cpants.perl.org/dist/kwalitee/#{{$module_name_dashed}}#>
+C<[kwalitee]> L<http://cpants.perl.org/dist/kwalitee/":{{$module_name_dashed}}:">
 
-C<[ used by]> L<http://cpants.perl.org/dist/used_by/#{{$module_name_dashed}}#>
+C<[ used by]> L<http://cpants.perl.org/dist/used_by/":{{$module_name_dashed}}:">
 
 =back
 
@@ -322,9 +322,9 @@ C<[ used by]> L<http://cpants.perl.org/dist/used_by/#{{$module_name_dashed}}#>
 
 =for possible_future
     * AnnoCPAN: Annotated CPAN documentation
-      http://annocpan.org/dist/#{{$module_name_dashed}}#
-    * CPANFORUM: Forum discussing #{{$module_name}}#
-      http://www.cpanforum.com/dist/#{{$module_name_dashed}}#
+      http://annocpan.org/dist/":{{$module_name_dashed}}:"
+    * CPANFORUM: Forum discussing ":{{$module_name}}:"
+      http://www.cpanforum.com/dist/":{{$module_name_dashed}}:"
 
 =head1 TODO
 
