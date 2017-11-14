@@ -31,10 +31,10 @@
 use strict;
 use warnings;
 use utf8;       # script source code is utf8 compatible/encoded
-# use 5.008008; ## minimum perl version ## v5.8.8 ~ required for decent basic Unicode support
-use 5.006001; ## v5.6.1: earliest tested version ## v5.5: for AUTHOR and ABSTRACT in Makefile.PL; v5.6: for 'our', three-argument open, indirect filehandles, extended versions for 'use' [URLref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17]
+# use 5.008008;   # minimum perl version ## v5.8.8 ~ required for decent basic Unicode support
+use 5.006001;   # v5.6.1: earliest tested version ## v5.5: for AUTHOR and ABSTRACT in Makefile.PL; v5.6: for 'our', three-argument open, indirect filehandles, extended versions for 'use' [URLref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17]
 
-use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
+use English qw( -no_match_vars ); # enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
 
 # use lib qw/ inc /;
 
@@ -66,7 +66,7 @@ $config{'license'} = undef;
 $config{'module_name'} = undef;                     # "primary" module (for construction of README, .packlist, etc); will be calculated/constructed if not defined
 $config{'dist_version'} = undef;                    # will be constructed if not defined
 #
-$config{'exports_aref'} = undef;                    # expected symbol table exports (no obvious default)
+$config{'exports_ref'} = undef;                     # expected symbol table exports (no obvious default; single ARRAY ref for 'default' module, or HASH of ARRAYs to specify multiple modules)
 $config{'recommends_href'} = {};                    # module recommendations (no obvious default)
 $config{'requires_href'} = {};                      # module requirements (no obvious default)
 #
@@ -159,7 +159,7 @@ use Module::Build;
 
 # Build.PL must be located in the main directory of the distribution (all described paths are relative to the main distribution directory)
 # Build.PL expects to be executed with CWD == the Build.PL containing directory == the main directory of the distribution
-if ( File::Spec->canonpath( $FindBin::RealBin ) ne File::Spec->canonpath( Cwd::getcwd ) ) { die "Must execute Build.PL from the base directory" }
+if ( File::Spec->canonpath( $FindBin::RealBin ) ne File::Spec->canonpath( Cwd::getcwd ) ) { die 'Must execute Build.PL from the base directory' }
 
 # # $config{} helper variables
 # $config{'lib_path'} = undef;                        # auto-generated from $config{'dist_name'} during .config file parsing (should NOT be set in .config, since it is regenerated after each successful $config{'dist_name'} parse in the .config parsing section)
@@ -167,15 +167,15 @@ if ( File::Spec->canonpath( $FindBin::RealBin ) ne File::Spec->canonpath( Cwd::g
 
 # pull in needed custom builder code
 my %code = rivy_builder_code_subs();
-() = eval $code{'@'};                 # init / prereq
-() = eval $code{'@version'};          # version loading / manipulation
-() = eval $code{'repo'};              # repo code
+() = eval $code{q/@/};                ## no critic ( ProhibitStringyEval )  ## init / prereq
+() = eval $code{q/@/.'version'};      ## no critic ( ProhibitStringyEval )  ## version loading / manipulation
+() = eval $code{'repo'};              ## no critic ( ProhibitStringyEval )  ## repo code
 
 # $config{VERSION}
 # * generated from any existing VERSION file in the main directory
 $config{'VERSION_filename'} = 'VERSION';
 %config = ( %config, version_from_vfile( rel2abs($config{'VERSION_filename'}, File::Spec->canonpath($FindBin::RealBin)) ) );
-if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//i; $config{'dist_version'} = $v; }
+if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//imsx; $config{'dist_version'} = $v; }
 
 $config{'repo_type'} = is_repo();
 my $repo;   # reference to hash reference to code
@@ -226,10 +226,10 @@ if ( -e $config_filename )
             if ( $key =~ m/^user_/msx || exists $config{$key} )
             { ## eval $value into $config{}
                 {
-                my $ev = '$config'."{$key} = $value";
+                my $ev = q/$/.'config'."{$key} = $value";
                 my $e = 0; my $w = 0;
                 $SIG{'__WARN__'} = sub { if (!$w) {chomp($w = $_[0]);} };
-                $e = !eval "$ev; 1";
+                $e = !eval "$ev; 1"; ## no critic ( ProhibitStringyEval )
                 #print "w = $w\n";
                 $SIG{'__WARN__'} = 'DEFAULT';   ## NOTE: 'IGNORE' is not supported by $SIG{'__WARN__'} [URLrefs: [perlvar - %SIG] http://perldoc.perl.org/perlvar.html#%SIG , [Perl's Warn and Die Signals] http://www.perlmonks.org/?node_id=51097 , http://www.perlmonks.org/?node_id=673637 ]
                 if ($w || $e) {warn qq{build: warning, malformed configuration entry: "$config_filename", line $line\n};}
@@ -266,11 +266,10 @@ if ( @{$config{'PL_folders_aref'}} > 0 )
     my $OS_no_case = File::Spec->case_tolerant();
 
     my @PL_globs = @{$config{'PL_folders_aref'}};
-    my @PL_folders = map { glob $_ } @PL_globs;
+    my @PL_folders = map { glob } @PL_globs;
 
     my %files;
-    my $folder;
-    foreach $folder ( @PL_folders ) {
+    foreach my $folder ( @PL_folders ) {
         if ( -e $folder ) {
             my $match_re = ($OS_no_case ? '(?i)' : q{}) . '[.](?i:pl)$';
             my $subst_re = ($OS_no_case ? '(?i)' : q{}) . "^$folder\/(.*)[.](?i:pl)\$";
@@ -327,7 +326,7 @@ if ( ! $config{'dist_abstract'} ) { die '$config{dist_abstract} must be defined'
 if ( ! $config{'dist_author'} )   { die '$config{dist_author} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
 if ( ! $config{'license'} )       { die '$config{license} must be defined' . "\n"; } ## no critic ( RequireCarping RequireInterpolation )
 
-if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//i; $config{'dist_version'} = $v; }
+if ( defined $config{'VERSION'} ) { my $v = $config{'VERSION'}; $v =~ s/^v//imsx; $config{'dist_version'} = $v; }
 
 #assert( $config{'lib_path'} ) # should be defined if $config{'dist_name'} has been parsed (as asserted above)
 
@@ -390,7 +389,7 @@ my $build = $class->new(
 
 $build->notes('dist_path' => $config{'dist_path'} );
 $build->notes('dist_repo_URL' => $config{'dist_repo_URL'} );
-$build->notes('exports_aref' => $config{'exports_aref'} );
+$build->notes('exports_ref' => $config{'exports_ref'} );
 $build->notes('add_to_versioned_aref' => $config{'add_to_versioned_aref'} );
 ##$build->notes('versioned_file_globs_exclude_aref' => $config{'versioned_file_globs_exclude_aref'} );
 
@@ -464,9 +463,9 @@ sub rivy_builder_code
     return $code;
 }
 sub rivy_builder_code_subs
-{ ## no critic (ValuesAndExpressions::RequireInterpolationOfMetachars ValuesAndExpressions::ProhibitImplicitNewlines)
+{; ## no critic (ValuesAndExpressions::RequireInterpolationOfMetachars ValuesAndExpressions::ProhibitImplicitNewlines)
 my %code;
-$code{'@'} = q{
+$code{q/@/} = q{
     use strict;
     use warnings;
     use English qw( -no_match_vars ); ## enable long-form built-in variable names; '-no_match_vars' avoids regex performance penalty for perl versions <= 5.16
@@ -934,8 +933,10 @@ $code{'expand_template'} = q{
         my $output_filename = shift;
         my $template_aref = shift;
 
-        my $delim_start = '#{{';
-        my $delim_stop  = '}}#';
+        # my $delim_start = '#{{';
+        # my $delim_stop  = '}}#';
+        my $delim_start = '":{{';
+        my $delim_stop  = '}}:"';
 
         my %vars = $self->get_template_vars( $output_filename );
 
