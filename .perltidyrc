@@ -1,12 +1,11 @@
-#--character-encoding=utf8       # treat files as UTF-8 (decode and encode)
--ole=win
-#--output-line-ending=unix   # use *nix LF EOLs
+--character-encoding="utf8"     # treat files as UTF-8 (decode and encode)
+--output-line-ending="unix"     # use *nix LF EOLs
 #--preserve-line-endings
 --standard-error-output
 --backup-and-modify-in-place			# backup file to .bak and modify in place
 --backup-file-extension=/               # '/' => delete backup file iff no errors
 -l=0		# no max line length
--i=4		# indent = 3
+-i=4		# indent = 4
 #-ci=4		# continuation-indentation=n == Continuation indentation is extra indentation spaces applied when a long line is broken.
 -nbl         # [no] opening-brace-on-new-line == Use the flag -bl to place the opening brace on a new line
 #-bl			# opening-brace-on-new-line == Use the flag -bl to place the opening brace on a new line
