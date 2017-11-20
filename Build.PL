@@ -490,9 +490,11 @@ $code{q/@/} = q{
 };
 $code{'@qprinf'} = q{
     {
+    my @encoding;
     my @printf_encoding;
     for (my $n = 0; $n <= 0xff; $n++) {
-        $printf_encoding[$n] = sprintf "\\%02x", $n;
+        $encoding[$n] = sprintf "\\%02x", $n;
+        $printf_encoding[$n] = $encoding[$n];
         }
     for (my $n = 0; $n <= 0x7f; $n++) {
         my $c = chr($n);
@@ -501,11 +503,15 @@ $code{'@qprinf'} = q{
         }
     sub qprintf ## ( @:strings ) => @:printf encoded strings
         {
+        my @in = @_;
         # encode input as equivalent printf compatible strings (also, portable)
         my $IFS = $ENV{IFS};
         if ( not defined $IFS || $IFS eq q// ) { $IFS = " \n\t" }
-        ## add replace IFS chracters in @printf_encoding with encoded equivalents
+        ## replace IFS characters in @printf_encoding with encoded equivalents
+        foreach ( split q//, $IFS ) { $printf_encoding[ord($_)] = $encoding[ord($_)] }
         ## foreach @_ { replace each character with its equivalent encoding }
+        foreach ( @in ) { $_ =~ s/(.)/$printf_encoding[ord($_)]/egmsx }
+        return @in;
         }
     }
 };
