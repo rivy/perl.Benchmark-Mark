@@ -38,7 +38,9 @@ before_install:
     - build-perl
     - perl -V
     - |
-      function unsupported { test -n "$OS_unsupported" && printf "\e[35mWARN: $OS_unsupported\e[0m\n"; }
+      function unsupported { test -n "$OS_unsupported"; }
+      function unsupported_msg { printf "\e[35mWARN: $OS_unsupported\e[0m\n"; }
+      function warn_and_exit_if_unsupported { unsupported && ( unsupported_msg >&2 ; exit; ); }
 
 install:
     # - cpanm --notest JSON::PP  # most recent JSON::PP is required to avoid JSON parsing errors during coverage testing
@@ -49,33 +51,48 @@ install:
     # - "dzil authordeps | cpanm --force --notest"
     # - "dzil listdeps --author | cpanm --force --notest"
     # * idiomatic build
+    # ensure CWD is project main directory
     - cd "$TRAVIS_BUILD_DIR"
+    # install baseline dependencies + check OS_unsupported
     - export OS_unsupported=""
-    - cpan-install --deps || true   # attempt install of prereqs, ignoring errors; for "OS unsupported" check
+    # * attempt install of prereqs, ignoring errors; for "OS unsupported" check
+    # - cpan-install --deps || true
+    # - cpanm --notest --skip-installed Module::Build || true
+    - cpanm --no-interactive --no-man-pages --notest --skip-satisfied --installdeps . || true
     - OS_unsupported=$(test $(perl Build.PL 2>&1 | grep -c "^OS unsupported\b") -ge 1 && echo "OS unsupported" || echo "$OS_unsupported")
-    - unsupported || cpan-install --deps       # installs prereqs, including recommends
-    - unsupported || cpan-install --coverage   # installs coverage prereqs, if enabled
+    # install dependencies
+    - unsupported || cpan-install --deps                # installs prereqs, including recommends
+    - unsupported || cpan-install --coverage            # installs coverage prereqs, if enabled
     # - unsupported || build-dist
 
 before_script:
+    # setup coverage
     - unsupported || coverage-setup
-    - export AUTOMATED_TESTING=1 HARNESS_OPTIONS=j10:c HARNESS_TIMER=1
+    # setup environment options
+    - export AUTOMATED_TESTING=1
     - export DEVEL_COVER_OPTIONS=-ignore,^_build/
+    - export HARNESS_OPTIONS=j:c                        # enable parallel processing and color
+    - test -n "$COVERAGE" || export "HARNESS_OPTIONS=c" # for COVERAGE builds, disable parallel processing to show correctly interleaved output
+    - export HARNESS_TIMER=1
+    # * preload JSON:PP to avoid JSON::PP::Boolean redefine warning (see <https://github.com/rurban/Cpanel-JSON-XS/issues/65#issuecomment-219352754>)
+    - test -n "$COVERAGE" || export PERL5OPT=-MJSON::PP
+    # ensure CWD is project main directory
+    - cd "$TRAVIS_BUILD_DIR"
 
 script:
     # # * `dzil` build (note: does not provide coverage info)
-    # - cd "$TRAVIS_BUILD_DIR"
     # - dzil test ## _or_ "dzil test --author --smoke"
     # * idiomatic build (portable variant)
-    - cd "$TRAVIS_BUILD_DIR"
-    - unsupported || perl Build.PL
-    - unsupported || perl Build
+    - unsupported || ( perl Build.PL && perl Build )
     - unsupported || perl Build test
     # - unsupported || prove -l -j$(test-jobs)              # tests
     # - unsupported || prove -l -j$(test-jobs) xt/author/*  # "author" tests
 
 after_success:
-    - unsupported || coverage-report  # coveralls.io + codecov.io for `COVERAGE="Coveralls Codecov"`
+    - unsupported || coverage-report                # coveralls.io + codecov.io for `COVERAGE="Coveralls Codecov"`
+
+after_script:
+    - warn_and_exit_if_unsupported                  # show warning if OS is unsupported; exiting here forces display of the warning and skips "Done. Your build exited with 0." text
 
 notifications:
     on_success: change
