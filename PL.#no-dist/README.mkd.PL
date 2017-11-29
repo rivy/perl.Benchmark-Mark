@@ -17,6 +17,8 @@ binmode DATA, ':raw:utf8'; ## no critic ( RequireEncodingWithUTF8Layer ) ## utf8
 
 __DATA__
 <!DOCTYPE markdown>
+<meta charset="utf-8" content="text/markdown" lang="en">
+
 <!-- ":{{$ME_ID}}:" -->
 
 [![[AppVeyor ~ build status]](https://ci.appveyor.com/api/projects/status/":{{$user_ci_appveyor_key}}:"/branch/":{{$branch}}:"?svg=true)](https://ci.appveyor.com/":{{$user_ci_appveyor_path}}:")
