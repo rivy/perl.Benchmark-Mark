@@ -1,6 +1,7 @@
 ## no critic ( Documentation::RequirePodAtEnd Documentation::RequirePodSections )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 # Benchmark::Mark 0.001_1 ("lib/Benchmark/Mark.pm" from "PL.#no-dist/lib/Benchmark/Mark.pm.PL")
+
 package Benchmark::Mark;
 
 # Module Summary
@@ -29,7 +30,7 @@ use 5.008008;    # earliest tested perl version (v5.8.8); v5.6.1 is no longer te
 ## no critic ( RequireConstantVersion )
 {
     our $VERSION = '0.001_1';
-    $VERSION =~ s/_//msx;    # numify VERSION (needed for alpha versions)
+    $VERSION =~ s/_//msx; ## numify VERSION (needed for alpha versions)
 }
 
 # Module base/ISA and Exports
@@ -37,6 +38,7 @@ use 5.008008;    # earliest tested perl version (v5.8.8); v5.6.1 is no longer te
 ## ref: Good Practices/Playing Safe in 'perldoc Exporter'
 ## URLrefs: [base.pm vs @ISA: http://www.perlmonks.org/?node_id=643366]; http://search.cpan.org/perldoc?base; http://search.cpan.org/perldoc?parent; http://perldoc.perl.org/DynaLoader.html; http://perldoc.perl.org/Exporter.html
 ## TODO?: look into using Readonly::Array and Readonly::Hash for EXPORT_OK and EXPORT_TAGS; ? or Const::Fast
+
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS ); ## no critic ( ProhibitExplicitISA )
 BEGIN { require DynaLoader; require Exporter; @ISA = qw( DynaLoader Exporter ); } ## no critic ( ProhibitExplicitISA )
 {

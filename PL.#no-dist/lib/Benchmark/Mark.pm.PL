@@ -1,11 +1,11 @@
-## no critic ( RequireExplicitPackage RequireVersionVar )
+## no critic ( Modules::RequireExplicitPackage Modules::RequireVersionVar )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 
 use strict;
 use warnings;
 use utf8;
 
-require SelfLoader if 0; ## no critic (ProhibitPostfixControls) ## purely a signal compelling `perltidy` to reformat code post-"__DATA__"
+require SelfLoader if 0; ## no critic ( ProhibitPostfixControls ) ## purely a signal compelling `perltidy` to reformat code post-"__DATA__"
 
 my $output_filename = shift;
 
@@ -21,6 +21,7 @@ __DATA__
 ## no critic ( Documentation::RequirePodAtEnd Documentation::RequirePodSections )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 # ":{{$ME_ID}}:"
+
 package ":{{$module_name}}:";
 
 # Module Summary
@@ -49,7 +50,7 @@ use 5.008008;    # earliest tested perl version (v5.8.8); v5.6.1 is no longer te
 ## no critic ( RequireConstantVersion )
 {
     our $VERSION = '":{{$VERSION}}:"';
-    $VERSION =~ s/_//msx;    # numify VERSION (needed for alpha versions)
+    $VERSION =~ s/_//msx; ## numify VERSION (needed for alpha versions)
 }
 
 # Module base/ISA and Exports
@@ -57,6 +58,7 @@ use 5.008008;    # earliest tested perl version (v5.8.8); v5.6.1 is no longer te
 ## ref: Good Practices/Playing Safe in 'perldoc Exporter'
 ## URLrefs: [base.pm vs @ISA: http://www.perlmonks.org/?node_id=643366]; http://search.cpan.org/perldoc?base; http://search.cpan.org/perldoc?parent; http://perldoc.perl.org/DynaLoader.html; http://perldoc.perl.org/Exporter.html
 ## TODO?: look into using Readonly::Array and Readonly::Hash for EXPORT_OK and EXPORT_TAGS; ? or Const::Fast
+
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS ); ## no critic ( ProhibitExplicitISA )
 BEGIN { require DynaLoader; require Exporter; @ISA = qw( DynaLoader Exporter ); } ## no critic ( ProhibitExplicitISA )
 {
