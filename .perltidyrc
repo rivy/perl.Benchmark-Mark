@@ -24,3 +24,6 @@
 -ssc		# static-side-comments == When -ssc is used, a side comment with a static leading pattern, which is ## by default, will be be spaced only a single space from previous character, and it will not be vertically aligned with other side comments.
 -sbl		# opening-sub-brace-on-new-line == The flag -sbl can be used to override the value of -bl for opening sub braces.
 -cti=2
+#
+-mbl=2
+-kbl=1
