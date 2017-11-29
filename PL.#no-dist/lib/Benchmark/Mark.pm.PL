@@ -1,21 +1,24 @@
-## no critic ( RequireEndWithOne RequireExplicitPackage RequireTidyCode RequireVersionVar )
+## no critic ( RequireExplicitPackage RequireVersionVar )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 
 use strict;
 use warnings;
 use utf8;
 
+require SelfLoader if 0; ## no critic (ProhibitPostfixControls) ## purely a signal compelling `perltidy` to reformat code post-"__DATA__"
+
 my $output_filename = shift;
 
 use Module::Build;
 
-binmode DATA, ':raw:utf8';    # utf8 + avoid EOL translations ## no critic ( RequireEncodingWithUTF8Layer )
+binmode DATA, ':raw:utf8'; ## no critic ( RequireEncodingWithUTF8Layer ) ## utf8 + avoid EOL translations
 
 () = Module::Build->current()->expand_template( $output_filename, [<DATA>] );
 
-## no critic ( Documentation::RequirePackageMatchesPodName Documentation::RequirePodSections Modules::RequireExplicitPackage ) ## ToDO: revisit/remove
+1;
+
 __DATA__
-## no critic ( CodeLayout::RequireTidyCode Documentation::RequirePodAtEnd Documentation::RequirePodSections Modules::RequireFilenameMatchesPackage )
+## no critic ( Documentation::RequirePodAtEnd Documentation::RequirePodSections )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 # ":{{$ME_ID}}:"
 package ":{{$module_name}}:";
@@ -39,14 +42,14 @@ package ":{{$module_name}}:";
 use strict;
 use warnings;
 #use diagnostics;   # invoke blabbermouth warning mode
-use 5.008008;       # earliest tested perl version (v5.8.8); v5.6.1 is no longer testable/reportable
+use 5.008008;    # earliest tested perl version (v5.8.8); v5.6.1 is no longer testable/reportable
 
 # VERSION: Major.minor[_alpha]  { minor is ODD => alpha/beta/experimental; minor is EVEN => stable/release }
 # * NOTE: "boring" versions are preferred (see: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL)
 ## no critic ( RequireConstantVersion )
 {
-our $VERSION = '":{{$VERSION}}:"';    # VERSION definition
-$VERSION =~ s/_//msxg;     # numify VERSION (needed for alpha versions)
+    our $VERSION = '":{{$VERSION}}:"';
+    $VERSION =~ s/_//msx;    # numify VERSION (needed for alpha versions)
 }
 
 # Module base/ISA and Exports
@@ -54,19 +57,20 @@ $VERSION =~ s/_//msxg;     # numify VERSION (needed for alpha versions)
 ## ref: Good Practices/Playing Safe in 'perldoc Exporter'
 ## URLrefs: [base.pm vs @ISA: http://www.perlmonks.org/?node_id=643366]; http://search.cpan.org/perldoc?base; http://search.cpan.org/perldoc?parent; http://perldoc.perl.org/DynaLoader.html; http://perldoc.perl.org/Exporter.html
 ## TODO?: look into using Readonly::Array and Readonly::Hash for EXPORT_OK and EXPORT_TAGS; ? or Const::Fast
-our (@ISA, @EXPORT_OK, %EXPORT_TAGS);   ## no critic ( ProhibitExplicitISA )
-BEGIN {require DynaLoader; require Exporter; @ISA = qw( DynaLoader Exporter );}     ## no critic ( ProhibitExplicitISA )
-{no strict 'refs'; ## no critic ( ProhibitNoStrict )
-%EXPORT_TAGS = (
-    'ALL'       => [ (grep { /^(?!bootstrap|dl_load_flags|import).*$/msx } grep { /^.*[[:lower:]].*$/msx } grep { /^([^_].*)$/msx } keys %{__PACKAGE__.q{::}}) ],  ## all non-internal symbols [Note: internal symbols are ALL_CAPS or start with a leading '_']
-    '_INTERNAL' => [ (grep { /^(([_].*)|([[:upper:]_]*))$/msx } keys %{__PACKAGE__.q{::}}) ],  ## all internal functions [Note: internal functions are ALL_CAPS or start with a leading '_']
-    );
-@EXPORT_OK = ( map { @{$_} } $EXPORT_TAGS{'ALL'} );
+our ( @ISA, @EXPORT_OK, %EXPORT_TAGS ); ## no critic ( ProhibitExplicitISA )
+BEGIN { require DynaLoader; require Exporter; @ISA = qw( DynaLoader Exporter ); } ## no critic ( ProhibitExplicitISA )
+{
+    no strict 'refs'; ## no critic ( ProhibitNoStrict )
+    %EXPORT_TAGS = (
+        'ALL' => [ ( grep { /^(?!bootstrap|dl_load_flags|import).*$/msx } grep { /^.*[[:lower:]].*$/msx } grep { /^([^_].*)$/msx } keys %{ __PACKAGE__ . q{::} } ) ], ## all non-internal symbols [Note: internal symbols are ALL_CAPS or start with a leading '_']
+        '_INTERNAL' => [ ( grep { /^(([_].*)|([[:upper:]_]*))$/msx } keys %{ __PACKAGE__ . q{::} } ) ], ## all internal functions [Note: internal functions are ALL_CAPS or start with a leading '_']
+        );
+    @EXPORT_OK = ( map { @{$_} } $EXPORT_TAGS{'ALL'} );
 }
 
 # Module Interface
 
-sub mark;   # ToDO: ...(eg, return Win32 command line string (already includes prior $ENV{} variable substitutions done by the shell))
+sub mark;    # ToDO: ...(eg, return Win32 command line string (already includes prior $ENV{} variable substitutions done by the shell))
 
 ####
 
@@ -74,24 +78,27 @@ sub mark;   # ToDO: ...(eg, return Win32 command line string (already includes p
 
 # bootstrap ":{{$module_name}}:" '":{{$VERSION}}:"';    # load XS
 
-require Benchmark; Benchmark->import( ':hireswallclock' );
+require Benchmark;
+Benchmark->import(':hireswallclock');
 
 my %timers;
 
-sub mark{
+sub mark
+{
     # mark(): returns ...
-    return (wantarray ? %timers : \%timers) if defined wantarray;
-    if (defined (my $name = shift)) { my $timer_ref = ($timers{$name} ||= {});
+    return ( wantarray ? %timers : \%timers ) if defined wantarray;
+    if ( defined( my $name = shift ) ) {
+        my $timer_ref = ( $timers{$name} ||= {} );
         ${$timer_ref}{stop} = ${$timer_ref}{start} ? ( ${$timer_ref}{stop} ||= Benchmark->new ) : 0;
         ${$timer_ref}{start} ||= Benchmark->new;
-        ${$timer_ref}{diff}{raw} = ${$timer_ref}{stop} ? ( ${$timer_ref}{diff}{raw} ||= Benchmark::timediff(${$timer_ref}{stop},${$timer_ref}{start}) ) : 0;
-        if (${$timer_ref}{diff}{raw}) { my @times = @{${$timer_ref}{diff}{raw}}; ${$timer_ref}{diff}{calc} = [ $times[0], $times[1]+$times[3], $times[2]+$times[4], $times[1]+$times[3]+$times[2]+$times[4] ]; } ## no critic ( ProhibitMagicNumbers )
-        ${$timer_ref}{duration} = ${$timer_ref}{diff}{raw} ? ( ${$timer_ref}{duration} ||=  sprintf '%0.6f wallclock secs (%0.3f usr + %0.3f sys = %0.3f CPU)', @{${$timer_ref}{diff}{calc}} ) : 0;
-        }
+        ${$timer_ref}{diff}{raw} = ${$timer_ref}{stop} ? ( ${$timer_ref}{diff}{raw} ||= Benchmark::timediff( ${$timer_ref}{stop}, ${$timer_ref}{start} ) ) : 0;
+        if ( ${$timer_ref}{diff}{raw} ) { my @times = @{ ${$timer_ref}{diff}{raw} }; ${$timer_ref}{diff}{calc} = [ $times[0], $times[1] + $times[3], $times[2] + $times[4], $times[1] + $times[3] + $times[2] + $times[4] ]; } ## no critic ( ProhibitMagicNumbers )
+        ${$timer_ref}{duration} = ${$timer_ref}{diff}{raw} ? ( ${$timer_ref}{duration} ||= sprintf '%0.6f wallclock secs (%0.3f usr + %0.3f sys = %0.3f CPU)', @{ ${$timer_ref}{diff}{calc} } ) : 0;
+    }
     return;
 }
 
-1; # Magic true value required at end of module (for require)
+1;    # Magic true value required at end of module (for require)
 
 ####
 
