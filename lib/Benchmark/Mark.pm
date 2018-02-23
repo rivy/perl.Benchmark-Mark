@@ -237,7 +237,7 @@ None reported.
     limitations on the size of data sets, special cases that are not
     (yet) handled, etc.
 
-Please report any bugs or feature requests to C<bug-Benchmark-Mark@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Benchmark-Mark>. The developers will be notified, and you'll automatically be notified of progress on your bug as any changes are made.
+Please report any bugs or feature requests to C<bug-@rt.cpan.org>, or through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=>. The developers will be notified, and you'll automatically be notified of progress on your bug as any changes are made.
 
 =head2 Operational Notes
 
@@ -265,11 +265,11 @@ You can also look for further information at:
 
 =over
 
-L<https://metacpan.org/search?q=Benchmark-Mark>
+L<https://metacpan.org/search?q=>
 
-L<http://search.cpan.org/dist/Benchmark-Mark>
+L<http://search.cpan.org/dist/>
 
-L<http://kobesearch.cpan.org/dist/Benchmark-Mark>
+L<http://kobesearch.cpan.org/dist/>
 
 =back
 
@@ -277,7 +277,7 @@ L<http://kobesearch.cpan.org/dist/Benchmark-Mark>
 
 =over
 
-L<http://cpanratings.perl.org/dist/Benchmark-Mark>
+L<http://cpanratings.perl.org/dist/>
 
 =back
 
@@ -285,7 +285,7 @@ L<http://cpanratings.perl.org/dist/Benchmark-Mark>
 
 =over
 
-L<http://rt.cpan.org/Public/Dist/Display.html?Name=Benchmark-Mark>
+L<http://rt.cpan.org/Public/Dist/Display.html?Name=>
 
 =back
 
@@ -293,7 +293,7 @@ L<http://rt.cpan.org/Public/Dist/Display.html?Name=Benchmark-Mark>
 
 =over
 
-L<http://www.cpantesters.org/show/Benchmark-Mark.html>
+L<http://www.cpantesters.org/show/.html>
 
 =back
 
@@ -301,9 +301,9 @@ L<http://www.cpantesters.org/show/Benchmark-Mark.html>
 
 =over
 
-C<[kwalitee]> L<http://cpants.perl.org/dist/kwalitee/Benchmark-Mark>
+C<[kwalitee]> L<http://cpants.perl.org/dist/kwalitee/>
 
-C<[ used by]> L<http://cpants.perl.org/dist/used_by/Benchmark-Mark>
+C<[ used by]> L<http://cpants.perl.org/dist/used_by/>
 
 =back
 
@@ -311,9 +311,9 @@ C<[ used by]> L<http://cpants.perl.org/dist/used_by/Benchmark-Mark>
 
 =for possible_future
     * AnnoCPAN: Annotated CPAN documentation
-      http://annocpan.org/dist/Benchmark-Mark
+      http://annocpan.org/dist/
     * CPANFORUM: Forum discussing Benchmark::Mark
-      http://www.cpanforum.com/dist/Benchmark-Mark
+      http://www.cpanforum.com/dist/
 
 =head1 TODO
 

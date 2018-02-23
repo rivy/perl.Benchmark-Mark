@@ -28,7 +28,7 @@ build_requires:
   Test::More: '0'
   Test::Without: '0'
   Text::Template: '1.44'
-  URI::URL: '0'
+  URI: '0'
   perl: v5.6.1
   version: '0.77'
 configure_requires:
@@ -49,11 +49,11 @@ configure_requires:
   TAP::Formatter::Console: '0'
   TAP::Harness: '0'
   Text::Template: '1.44'
-  URI::URL: '0'
+  URI: '0'
   perl: v5.6.1
   version: '0.77'
-dynamic_config: 1
-generated_by: 'Module::Build version 0.4224, CPAN::Meta::Converter version 2.150005'
+dynamic_config: 0
+generated_by: 'Module::Build version 0.4224, CPAN::Meta::Converter version 2.150010'
 license: artistic_2
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -69,10 +69,13 @@ provides:
     file: lib/Benchmark/Mark.pm
     version: 0.001_1
 recommends:
-  Time::HiRes: '0'
-requires:
   Benchmark: '0'
+  Time::HiRes: '0'
 resources:
+  bugtracker: https://github.com/rivy/perl.Benchmark-Mark/issues
+  homepage: https://github.com/rivy/perl.Benchmark-Mark
   license: http://www.perlfoundation.org/artistic_license_2_0
+  repository: https://github.com/rivy/perl.Benchmark-Mark.git
 version: 0.001_1
+x_authority: cpan:RIVY
 x_serialization_backend: 'CPAN::Meta::YAML version 0.018'

@@ -1,109 +1,161 @@
-# .appveyor.yml
+# .appveyor.yml (for Perl distributions)
 
-# ref: https://www.appveyor.com/docs/appveyor-yml @@ https://archive.is/OUJHS
-# * validation tool @ https://ci.appveyor.com/tools/validate-yaml
+# * (APIv1) for usage instructions, see <https://github.com/rivy/CI.AppVeyor.helpers-perl/blob/stable.APIv1/README.mkd>
 
-# * note: AppVeyor setup
-# 1. add an AppVeyor project observing the repository
-# 2. enable "General / Skip branches without appveyor.yml" within the project SETTINGS
+# ref: <https://www.appveyor.com/docs/appveyor-yml>[`@`](https://archive.is/OUJHS)
+# * "appveyor.yml" validation tool @ <https://ci.appveyor.com/tools/validate-yaml>
 
 version: "{build} ~ {branch}"
-
-# skip_tags: true     # do not build on tags
 
 branches:
   except:
     - gh-pages
 
-environment:
-    matrix:
-        - Perl_VERSION: ""                # latest
-        - Perl_VERSION: "5.24.3.1"
-        - Perl_VERSION: "5.22.3.1"
-        - Perl_VERSION: "5.20.3.3"
-        - Perl_VERSION: "5.20.3.3"
-          COVERAGE: "Codecov Coveralls" ## note: case sensitive!
-        # - Perl_VERSION: "5.16.3.3"
-        # - Perl_VERSION: "5.12.3.1"
+skip_tags: true     ## do not build on tags
 
-# cache:
-#     - C:\strawberry -> .appveyor.yml
+matrix:
+  allow_failures:
+  - Perl_VERSION: "5.8.8" ## allow perl v5.8.8 failures; (v5.8.8 is problematic for many projects)
+
+environment:
+  matrix:
+    - Perl_VERSION: "latest"
+      COVERAGE: "Codecov Coveralls" ## note: case sensitive!
+    - Perl_VERSION: "5.28"
+    - Perl_VERSION: "5.26"
+    - Perl_VERSION: "5.24"
+    - Perl_VERSION: "5.22"
+    - Perl_VERSION: "5.20"
+    - Perl_VERSION: "5.16"
+    - Perl_VERSION: "5.14"
+    - Perl_VERSION: "5.12"
+    - Perl_VERSION: "5.10"
+    - Perl_VERSION: "5.8"
+    - Perl_VERSION: "5.8.8"
+  global:
+    AUTOMATED_TESTING: 1
+    CI_CACHE_DIR: C:\cache
+    #
+    # debug?
+    # CI_DEBUG: 1               ##  [ "" == false, <non-empty> == true ]; "true" enables detailed output for the helper scripts
+    #
+    ## configuration (CI/network-side settings and then ".appveyor_init.{BAT,PS1}" [if present], may override these values [by design])
+    ## ---
+    # * standard perl distribution test configuration signals
+    AUTHOR_TESTING: ""
+    RELEASE_TESTING: ""
+    # * .appveyor.yml configuration variables
+    CI_HELPER_API_VERSION: "1"  ## * API version (the expected/requested helper API version)
+    CI_HELPER_BRANCH: ""        ## "" => auto-set, valid alternates are [ "stable" (the default), "canary", BRANCH, or TAG ]
+    CI_HELPER_REPO: ""          ## "" => auto-set; allows easier use of alternate helper scripts (ie, alternate forks)
+    DEVEL_COVER_OPTIONS: ""     ## "" => auto-set, value determined by DIST_TOOLING; quoted whitespace (eg, " ") is an empty/neutral setting which also blocks auto-set
+    DIST_EXTRA_DEPS: ""         ## additional required/requested dependencies for build and/or testing
+    DIST_SUPPRESS_DEPS: ""      ## [ "" == false, <non-empty> == true ]; "true" can be useful for CORE modules, suppressing discovery and installation of dependencies, unless otherwise required (by COVERAGE or DIST_EXTRA_DEPS)
+    DIST_TOOLING: ""            ## [ "build", "make" ]; "" => auto-set based on existence of "Build.PL" and/or "Makefile.PL"
+    TEST_METHOD: ""             ## "" => auto-set based on DIST_TOOLING (`perl Build test`, `%make% test`, or `prove -bl`)
+    TEST_FILES: ""              ## "" => auto-set to "" for build/make distributions, otherwise "t" or "t xt" depending on AUTHOR_TESTING and/or RELEASE_TESTING and directory existence
+    ## ---
+
+cache:
+# note: unused, because, unfortunately, the available cache is too small to be helpful (unshared; 1GB across all projects)
+#   - '%CI_CACHE_DIR% -> .appveyor.yml'
 
 install:
-    # install correct perl version
-    - if not exist "C:\strawberry" cinst strawberryperl -y --version="%Perl_VERSION%"
-    - set PATH=C:\strawberry\perl\bin;C:\strawberry\perl\site\bin;C:\strawberry\c\bin;%PATH%
-    # ensure CWD is project main directory
-    - cd "%APPVEYOR_BUILD_FOLDER%"
-    - ps: |
-        [System.Environment]::CurrentDirectory = (Get-Location).Path
-    # install baseline dependencies + check OS_unsupported
-    # - cpanm --no-interactive --no-man-pages --notest --skip-satisfied Module::Build
-    - cpanm --no-interactive --no-man-pages --notest --skip-satisfied --installdeps .
-    - perl Build.PL 2>&1 | findstr /b /i /r "OS unsupported\b" >NUL 2>&1 && set "OS_unsupported=OS unsupported" || set "OS_unsupported="
-    # check coverage prereqs
-    - ps: |
-        if (-not $env:OS_unsupported -and $env:COVERAGE) {
-            # determine coverage support (signalled by <COVERAGE_TYPE>_TOKEN environment vars)
-            $s = $env:COVERAGE
-            $coverage = @()
-            $s.split() | foreach {
-                $name = "env:\"+$_.ToUpper()+"_TOKEN"
-                $val = (get-item $("env:\"+$_.ToUpper()+"_TOKEN") -ea ignore).value
-                # write-host "$name = '$val'"
-                # write-host "`$val.length = $($val.length)"
-                if ($val.length -gt 0) { $coverage += $_ } else { write-host -f yellow "info: skipping '$_' coverage (missing '$($_.ToUpper() + '_TOKEN')')" }
-                }
-            $env:COVERAGE = $coverage -join " "
-            # write-host "env:COVERAGE = $env:COVERAGE"
-            }
-    # install dependencies
-    - if NOT DEFINED OS_unsupported ( cpanm --no-interactive --no-man-pages --notest --skip-satisfied --with-recommends --installdeps . )
-    - ps: |
-        if (-not $env:OS_unsupported -and $env:COVERAGE) {
-            # install coverage support
-            cpanm --notest --skip-installed Devel::Cover
-            ($env:COVERAGE).split() | foreach {
-                # echo "cpanm --no-interactive --no-man-pages --notest --skip-satisfied Devel::Cover::Report::$_"
-                cpanm --no-interactive --no-man-pages --notest --skip-satisfied Devel::Cover::Report::$_
-                }
-            }
+  - ps: ; write-host $("[{0:HH:mm:ss}].install" -f $($mark = get-date; $mark)) -f darkgray
+  # ensure CWD is project main directory
+  - cd "%APPVEYOR_BUILD_FOLDER%"
+  # perform any special preparation (optional; distribution specific)
+  # * note: optional external file(s), global scope => allows ".appveyor.yml" to remain more stable and similar [or the same] between different distributions [eg, for automated distribution of ".appveyor.yml" changes]
+  - if EXIST ".appveyor_init.BAT" ( call .appveyor_init.BAT )
+  - ps: if ( test-path ".appveyor_init.PS1" ) { . ".\.appveyor_init.PS1" }
+  # save baseline environment (for later logging of overrides)
+  - ps: $base_env = @(get-childitem env:)
+  # create a working area
+  - ps: if ( ! $env:CI_TEMP_DIR ) { $env:CI_TEMP_DIR = "${env:TEMP}\${env:APPVEYOR_JOB_ID}" ; mkdir -force $env:CI_TEMP_DIR | out-null }
+  # create cache area, if missing
+  - if NOT DEFINED CI_CACHE_DIR ( set "CI_CACHE_DIR=%CI_TEMP_DIR%\cache" )
+  - if NOT EXIST "%CI_CACHE_DIR%" ( mkdir "%CI_CACHE_DIR%" )
+  # finalize HELPER repository location
+  - if NOT DEFINED CI_HELPER_REPO ( set "CI_HELPER_REPO=https://github.com/rivy/CI.AppVeyor.helpers-perl.git" )
+  - if NOT DEFINED CI_HELPER_BRANCH ( set "CI_HELPER_BRANCH=stable" )
+  - if /I "%CI_HELPER_BRANCH%"=="canary" ( set "CI_HELPER_BRANCH=canary.APIv%CI_HELPER_API_VERSION%" )
+  - if /I "%CI_HELPER_BRANCH%"=="stable" ( set "CI_HELPER_BRANCH=stable.APIv%CI_HELPER_API_VERSION%" )
+  # find / download helpers
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (helpers)" -f $($mark_sub = get-date; $mark_sub)) -f darkgray
+  # * use "vendored" copy if present
+  - ps: if ( ! $env:CI_HELPERS -and (test-path ".appveyor_bin") ) { $env:CI_HELPERS=[IO.Path]::GetFullPath(".appveyor_bin") ; "[{0:HH:mm:ss}].install ... helpers ... (vendored)" -f $(get-date) }
+  # * clone/download helpers from repo if needed
+  - ps: if ( ! $env:CI_HELPERS ) { $repo_path = $( mkdir "${env:CI_TEMP_DIR}\helpers" ).Fullname ; $git_cmd = "git clone ${env:CI_HELPER_REPO} `"${repo_path}`" -b ${env:CI_HELPER_BRANCH} 2>&1" ; write-host "``${git_cmd}``" ; & 'CMD' @( '/c', $git_cmd ) ; $err = $LASTEXITCODE ; $env:CI_HELPERS = "${repo_path}\.appveyor_bin" ; if ($err -ne 0) { exit -1 } ; }
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (helpers) ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark_sub).totalseconds)) -f gray
+  # resolve requested coverage with needed configuration
+  - ps: . "${env:CI_HELPERS}\install.evaluate-coverage.ps1"
+  ##
+  # highlight any overrides
+  - ps: $base_env | & "${env:CI_HELPERS}\log-env-overrides.ps1"
+  ##
+  # move "C:\mingw" to avoid cross library linking (a problem with older perl versions, breaking dll compilation with "/mingw/lib/dllcrt2.o:(.text+0xd1): undefined reference to `__dyn_tls_init_callback'")
+  # * only truly needed for modules containing XS compilation, but ok for all modules
+  - move c:\mingw c:\mingw.o >NUL
+  # force branch checkout (if knowable), then reset to the specific commit ## (needed for accurate code coverage info)
+  # * this allows later apps to see the branch name using standard `git branch` operations, yet always builds the correct specific commit
+  # * ref: <https://github.com/appveyor/ci/issues/1606>[`@`](https://archive.is/RVpnF)
+  - if DEFINED APPVEYOR_REPO_BRANCH if /I "%APPVEYOR_REPO_SCM%"=="git" ( git checkout "%APPVEYOR_REPO_BRANCH%" & git reset --hard "%APPVEYOR_REPO_COMMIT%" )
+  # install perl (strawberry variant) + version verification
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (perl)" -f $($mark_sub = get-date; $mark_sub)) -f darkgray
+  - call "%CI_HELPERS%\install.install-perl.BAT"
+  - perl -V
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (perl) ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark_sub).totalseconds)) -f gray
+  # determine build tooling
+  - if NOT DEFINED DIST_TOOLING if EXIST "Build.PL" ( set "DIST_TOOLING=build" )
+  - if NOT DEFINED DIST_TOOLING if EXIST "Makefile.PL" ( set "DIST_TOOLING=make" )
+  # setup DEVEL_COVER_OPTIONS, if needed
+  - ps: if (! $env:DEVEL_COVER_OPTIONS) { . "${env:CI_HELPERS}\install.setup-cover-options.ps1" }
+  # setup testing method/options and test files
+  - ps: . "${env:CI_HELPERS}\install.setup-testing.ps1"
+  # distribution prep prior to the build/make process (ie, build dependencies and OS_unsupported check)
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (distribution requirements)" -f $($mark_sub = get-date; $mark_sub)) -f darkgray
+  - call "%CI_HELPERS%\install.setup-dist.BAT"
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (distribution requirements) ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark_sub).totalseconds)) -f gray
+  # coverage prep
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (coverage)" -f $($mark_sub = get-date; $mark_sub)) -f darkgray
+  - ps: . "${env:CI_HELPERS}\install.setup-coverage.ps1"
+  - ps: ; write-host $("[{0:HH:mm:ss}].install (coverage) ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark_sub).totalseconds)) -f gray
+  #
+  - ps: ; write-host $("[{0:HH:mm:ss}].install ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark).totalseconds)) -f green
 
 before_build:
-    # setup coverage
-    - ps: |
-        if (-not $env:OS_unsupported -and $env:COVERALLS_TOKEN) { [System.IO.File]::WriteAllText( ".coveralls.yml", "`nrepo_token: $env:COVERALLS_TOKEN`n" ) }
-    # setup environment options
-    - set AUTOMATED_TESTING=1
-    - set DEVEL_COVER_OPTIONS=-ignore,^_build/
-    - set HARNESS_OPTIONS=j:c                       # enable parallel processing and color
-    - if DEFINED COVERAGE (set "HARNESS_OPTIONS=c") # for COVERAGE builds, disable parallel processing to show correctly interleaved output
-    - set HARNESS_TIMER=1
-    # * for COVERAGE builds, preload JSON:PP to avoid JSON::PP::Boolean redefine warning (see <https://github.com/rurban/Cpanel-JSON-XS/issues/65#issuecomment-219352754>)
-    - if DEFINED COVERAGE (set PERL5OPT=-MJSON::PP)
-    # ensure CWD is project main directory
-    - cd "%APPVEYOR_BUILD_FOLDER%"
-    - ps: |
-        [System.Environment]::CurrentDirectory = (Get-Location).Path
+  - ps: ; write-host $("[{0:HH:mm:ss}].before_build" -f $($mark = get-date; $mark)) -f darkgray
+  # ensure CWD is project main directory
+  - cd "%APPVEYOR_BUILD_FOLDER%"
+  # * for non-COVERAGE builds, enable parallel processing (COVERAGE builds need sequential, correctly interleaved, output to avoid warnings)
+  - if NOT DEFINED COVERAGE (set "HARNESS_OPTIONS=j")
+  - set HARNESS_TIMER=1
+  # * for COVERAGE builds, enable coverage for `prove` testing
+  - if DEFINED COVERAGE (set HARNESS_PERL_SWITCHES=-MDevel::Cover %HARNESS_PERL_SWITCHES%)
+  # * for COVERAGE builds, preload JSON:PP to avoid JSON::PP::Boolean redefine warning (see <https://github.com/rurban/Cpanel-JSON-XS/issues/65#issuecomment-219352754>)
+  - if DEFINED COVERAGE (set HARNESS_PERL_SWITCHES=-MJSON::PP %HARNESS_PERL_SWITCHES%)
+  #
+  - call "%CI_HELPERS%\before_build.dist.BAT"
+  # show final build-related environment variables
+  - call "%CI_HELPERS%\log-env.BAT"
+  #
+  - ps: ; write-host $("[{0:HH:mm:ss}].before_build ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark).totalseconds)) -f green
 
 build_script:
-    - if NOT DEFINED OS_unsupported ( perl Build.PL && perl Build )
+  - ps: ; write-host $("[{0:HH:mm:ss}].build" -f $($mark = get-date; $mark)) -f darkgray
+  - call "%CI_HELPERS%\build.dist.BAT"
+  - ps: ; write-host $("[{0:HH:mm:ss}].build ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark).totalseconds)) -f green
 
 test_script:
-    # - if DEFINED OS_unsupported (echo OS unsupported) else if DEFINED COVERAGE ( Build testcover ) else ( Build test )
-    - if NOT DEFINED OS_unsupported if DEFINED COVERAGE ( perl Build testcover ) else ( perl Build test )
+  - ps: ; write-host $("[{0:HH:mm:ss}].test [``$(@(${env:TEST_METHOD},${env:TEST_FILES}) -ne $null -join ' ')``]" -f $($mark = get-date; $mark)) -f darkgray
+  - call %TEST_METHOD% %TEST_FILES%
+  - ps: ; write-host $("[{0:HH:mm:ss}].test ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark).totalseconds)) -f green
 
 after_test:
-    - ps: if (-not $env:OS_unsupported -and $env:COVERAGE) { $env:COVERAGE.split() | foreach { cover -report $_ 2>&1 } }
-    - ps: |
-        if ($env:OS_unsupported) { write-host -f magenta "WARN: OS unsupported" }
-
-# notifications:
-# To get Github PR notifications from AppVeyor, get an auth token from Github,
-# encrypt it at https://ci.appveyor.com/tools/encrypt and put it into the
-# secure field
-#  - provider: GitHubPullRequest
-#    auth_token:
-#      secure: ...
-
-notifications:
+  - ps: ; write-host $("[{0:HH:mm:ss}].after_test" -f $($mark = get-date; $mark)) -f darkgray
+  # reporting
+  # * report any code coverage information
+  - ps: if (-not $env:OS_unsupported -and $env:COVERAGE) { $env:COVERAGE.split() | foreach { CMD /c "cover -report $_ 2>&1" } }
+  - ps: ; write-host $("[{0:HH:mm:ss}].after_test ... done ({1:0.0}s)" -f $(get-date; $($(get-date) - $mark).totalseconds)) -f green
+  # end with a prominent "unsupported" notice/warning, when needed
+  - ps: if ($env:OS_unsupported) { write-host -f magenta "WARN:` OS unsupported" }

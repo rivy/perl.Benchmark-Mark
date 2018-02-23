@@ -28,7 +28,7 @@ my $message = q{};
 unless ($message || $haveSIGNATURE) { $message = 'Missing SIGNATURE file'; }
 unless ($message || $haveNonEmptySIGNATURE) { $message = 'Empty SIGNATURE file'; }
 
-unless ($message || ($ENV{TEST_SIGNATURE} or $ENV{TEST_ALL})) { $message = 'Signature test [to run: set TEST_SIGNATURE]'; }
+unless ($message || ($ENV{TEST_SIGNATURE} or $ENV{TEST_RELEASE} or $ENV{TEST_ALL} or $ENV{CI})) { $message = 'Signature test [to run: set TEST_SIGNATURE]'; }
 
 unless ($message || $haveModuleSignature) { $message = 'Module::Signature required to check distribution SIGNATURE'; }
 unless ($message || $haveSHA) { $message = 'One of Digest::SHA, Digest::SHA1, or Digest::SHA::PurePerl is required'; }
@@ -60,20 +60,17 @@ my $codeRef = \&my_manifind;
 *ExtUtils::Manifest::manifind = $codeRef;
 }}
 
-my $DOWARN = 1;
 my $notCertified = 0;
 my $fingerprint = q{};
 # # setup warning silence to avoid loud "WARNING: This key is not certified with a trusted signature! Primary key fingerprint: [...]"
 # # :: change it to a less scary diag()
 my $verify;
 {
-local $SIG{'__WARN__'} = sub { if ($_[0] =~ /^WARNING:(.*)not certified/msx) { $notCertified = 1 }; if ($notCertified && ($_[0] =~ /^.*fingerprint:\s*(.*?)\s*$/msx)) { $fingerprint = $1 };  warn $_[0] if $DOWARN || ! $notCertified; };
-$DOWARN = 0;    # silence warnings
+local $SIG{'__WARN__'} = sub { if ($_[0] =~ /^WARNING:(.*)key(.*)not\s+certified/msx) { $notCertified = 1 }; if ($notCertified && ($_[0] =~ /^.*fingerprint:\s*(.*?)\s*$/msx)) { $fingerprint = $1 };  warn $_[0] if ! $notCertified; };
 $verify = Module::Signature::verify();
-$DOWARN = 1;    # re-enable warnings
 }
 
-if (($verify == Module::Signature::SIGNATURE_OK()) && $fingerprint) { diag('SIGNATURE verified, but NOT certified/trusted'); diag("signature fingerprint: [$fingerprint]"); }
+if (($verify == Module::Signature::SIGNATURE_OK()) && $fingerprint) { diag('SIGNATURE verified, but it is NOT certified/trusted'); diag("SIGNATURE fingerprint: [$fingerprint]"); }
 
 # is($message, q{}, $message);
 is($verify, Module::Signature::SIGNATURE_OK(), 'Verify SIGNATURE over distribution');

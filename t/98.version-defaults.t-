@@ -16,14 +16,14 @@ use English qw( -no_match_vars ); ##    # long Perl built-on variable names ['-n
 
 use Test::More;
 
-plan skip_all => 'Author tests [to run: set TEST_AUTHOR]' unless $ENV{TEST_AUTHOR} or $ENV{TEST_ALL};
+plan skip_all => 'Author tests [to run: set TEST_AUTHOR]' unless $ENV{TEST_AUTHOR} or $ENV{TEST_RELEASE} or $ENV{TEST_ALL};
 plan skip_all => 'TAINT mode not supported (Module::Build is eval tainted)' if in_taint_mode();
 
 use Module::Build;
 
 my $mb = Module::Build->current();
 
-my @files = @{$mb->notes('versioned_filenames_aref')};
+my @files = @{$mb->notes('config/versioned_filenames_aref')};
 
 #_or_
 ### untaint

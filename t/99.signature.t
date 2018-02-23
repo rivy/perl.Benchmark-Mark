@@ -10,7 +10,7 @@ my $fh = select STDIN; $|++; select STDOUT; $|++; select STDERR; $|++; select $f
 
 use Test::More;     # included with perl v5.6.2+
 
-plan skip_all => 'Author tests [to run: set TEST_AUTHOR]' unless $ENV{TEST_AUTHOR} or $ENV{TEST_ALL};
+plan skip_all => 'Author tests [to run: set TEST_AUTHOR]' unless $ENV{TEST_AUTHOR} or $ENV{TEST_RELEASE} or $ENV{TEST_ALL};
 
 ## no critic ( RequireCarping )
 
@@ -60,17 +60,14 @@ my $codeRef = \&my_manifind;
 *ExtUtils::Manifest::manifind = $codeRef;
 }}
 
-my $DOWARN = 1;
 my $notCertified = 0;
 my $fingerprint = q{};
 # # setup warning silence to avoid loud "WARNING: This key is not certified with a trusted signature! Primary key fingerprint: [...]"
 # # :: change it to a less scary diag()
 my $verify;
 {
-local $SIG{'__WARN__'} = sub { if ($_[0] =~ /^WARNING:(.*)not certified/msx) { $notCertified = 1 }; if ($notCertified && ($_[0] =~ /^.*fingerprint:\s*(.*?)\s*$/msx)) { $fingerprint = $1 };  warn $_[0] if $DOWARN || ! $notCertified; };
-$DOWARN = 0;    # silence warnings
+local $SIG{'__WARN__'} = sub { if ($_[0] =~ /^WARNING:(.*)key(.*)not\s+certified/msx) { $notCertified = 1 }; if ($notCertified && ($_[0] =~ /^.*fingerprint:\s*(.*?)\s*$/msx)) { $fingerprint = $1 };  warn $_[0] if ! $notCertified; };
 $verify = Module::Signature::verify();
-$DOWARN = 1;    # re-enable warnings
 }
 
 if (($verify == Module::Signature::SIGNATURE_OK()) && $fingerprint) { diag('SIGNATURE verified, but NOT certified/trusted'); diag("signature fingerprint: [$fingerprint]"); }
