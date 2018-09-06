@@ -40,7 +40,7 @@ use 5.008008;    # earliest tested perl version (v5.8.8); v5.6.1 is no longer te
 ## TODO?: look into using Readonly::Array and Readonly::Hash for EXPORT_OK and EXPORT_TAGS; ? or Const::Fast
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS ); ## no critic ( ProhibitExplicitISA )
-BEGIN { require DynaLoader; require Exporter; @ISA = qw( DynaLoader Exporter ); } ## no critic ( ProhibitExplicitISA )
+BEGIN { require Exporter; @ISA = qw( Exporter ); } ## no critic ( ProhibitExplicitISA )
 {
     no strict 'refs'; ## no critic ( ProhibitNoStrict )
     %EXPORT_TAGS = (

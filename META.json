@@ -1,10 +1,10 @@
 {
    "abstract" : "Simple code benchmarking/timing",
    "author" : [
-      "Roy Ivy III <rivy[at]cpan[dot]org>"
+      "Roy Ivy III <rivy@cpan.org>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Module::Build version 0.4224",
+   "generated_by" : "Module::Build version 0.421",
    "license" : [
       "artistic_2"
    ],
@@ -130,6 +130,5 @@
       }
    },
    "version" : "0.001_1",
-   "x_authority" : "cpan:RIVY",
-   "x_serialization_backend" : "JSON::PP version 2.94"
+   "x_authority" : "cpan:RIVY"
 }

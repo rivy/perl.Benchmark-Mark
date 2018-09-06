@@ -1,7 +1,7 @@
 ---
 abstract: 'Simple code benchmarking/timing'
 author:
-  - 'Roy Ivy III <rivy[at]cpan[dot]org>'
+  - 'Roy Ivy III <rivy@cpan.org>'
 build_requires:
   CPAN::Meta: '0'
   Carp: '0'
@@ -53,7 +53,7 @@ configure_requires:
   perl: v5.6.1
   version: '0.77'
 dynamic_config: 0
-generated_by: 'Module::Build version 0.4224, CPAN::Meta::Converter version 2.150010'
+generated_by: 'Module::Build version 0.421, CPAN::Meta::Converter version 2.142060'
 license: artistic_2
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -78,4 +78,3 @@ resources:
   repository: https://github.com/rivy/perl.Benchmark-Mark.git
 version: 0.001_1
 x_authority: cpan:RIVY
-x_serialization_backend: 'CPAN::Meta::YAML version 0.018'
