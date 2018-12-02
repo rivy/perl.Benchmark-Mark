@@ -35,19 +35,20 @@ sub sayf (@) { return say sprintf shift, @_ }   # ( @:MSGS ) => $:success
 # Tests
 
 SKIP: {
-    use Test::Without;
+    # use Test::Without;
+    my $haveTestWithout = eval { require Test::Without; import Test::Without; 1; };
 
     skip "Non-working Test::Without without/with 'Benchmark'", 2;
 
-    run {
-        my $success = eval q/require Benchmark::Mark/;
-        isnt( $success, 1, q/importing Benchmark::Mark fails when Benchmark isn't available/);
-    } without 'Benchmark';
+    # run {
+    #     my $success = eval q/require Benchmark::Mark/;
+    #     isnt( $success, 1, q/importing Benchmark::Mark fails when Benchmark isn't available/);
+    # } without 'Benchmark';
 
-    run {
-        my $success = eval q/require Benchmark::Mark/;
-        is  ( $success, 1, q/importing Benchmark::Mark succeeds when Benchmark is available/);
-    } with 'Benchmark';
+    # run {
+    #     my $success = eval q/require Benchmark::Mark/;
+    #     is  ( $success, 1, q/importing Benchmark::Mark succeeds when Benchmark is available/);
+    # } with 'Benchmark';
 };
 
 #
