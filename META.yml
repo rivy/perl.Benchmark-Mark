@@ -17,7 +17,7 @@ build_requires:
   File::Which: '0'
   FindBin: '0'
   IO::File: '0'
-  Module::Build: '0'
+  Module::Build: '0.421'
   Probe::Perl: '0'
   TAP::Formatter::Color: '0'
   TAP::Formatter::Console: '0'
@@ -26,7 +26,6 @@ build_requires:
   Test::CPAN::Meta::JSON: '0'
   Test::Differences: '0'
   Test::More: '0'
-  Test::Without: '0'
   Text::Template: '1.44'
   URI: '0'
   perl: v5.6.1
@@ -44,7 +43,7 @@ configure_requires:
   File::Which: '0'
   FindBin: '0'
   IO::File: '0'
-  Module::Build: '0'
+  Module::Build: '0.421'
   TAP::Formatter::Color: '0'
   TAP::Formatter::Console: '0'
   TAP::Harness: '0'
@@ -53,7 +52,7 @@ configure_requires:
   perl: v5.6.1
   version: '0.77'
 dynamic_config: 0
-generated_by: 'Module::Build version 0.421, CPAN::Meta::Converter version 2.142060'
+generated_by: 'Module::Build version 0.4224, CPAN::Meta::Converter version 2.150010'
 license: artistic_2
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -61,9 +60,14 @@ meta-spec:
 name: Benchmark-Mark
 no_index:
   directory:
+    - eg
+    - extras
+    - notes
     - inc
     - t
     - xt
+  file:
+    - README.mkd
 provides:
   Benchmark::Mark:
     file: lib/Benchmark/Mark.pm
@@ -78,3 +82,4 @@ resources:
   repository: https://github.com/rivy/perl.Benchmark-Mark.git
 version: 0.001_1
 x_authority: cpan:RIVY
+x_serialization_backend: 'CPAN::Meta::YAML version 0.018'
