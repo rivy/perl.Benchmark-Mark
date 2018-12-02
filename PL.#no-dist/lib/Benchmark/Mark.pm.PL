@@ -18,7 +18,7 @@ binmode DATA, ':raw:utf8'; ## no critic ( RequireEncodingWithUTF8Layer ) ## utf8
 1;
 
 __DATA__
-## no critic ( Documentation::RequirePodAtEnd Documentation::RequirePodSections )
+## no critic ( CodeLayout::RequireTidyCode Documentation::RequirePodAtEnd Documentation::RequirePodSections )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 # ":{{$ME_ID}}:"
 
