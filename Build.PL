@@ -30,7 +30,7 @@
 
 use strict;
 use warnings;
-use utf8;       # script source code is utf8 compatible/encoded
+use utf8;       # script source code is utf8 compatible/encoded ## note: v5.8 syntax per `perlver`
 # use 5.008008;   # minimum perl version ## v5.8.8 ~ required for decent basic Unicode support
 use 5.006001;   # v5.6.1: earliest tested version ## v5.5: for AUTHOR and ABSTRACT in Makefile.PL; v5.6: for 'our', three-argument open, indirect filehandles, extended versions for 'use' [ref: http://www.dagolden.com/index.php/369/version-numbers-should-be-boring @@ https://archive.is/7PZQL @@ http://www.webcitation.org/66Z1eHR17]
 
@@ -81,7 +81,7 @@ $config{'dynamic_config'} = 0;                      # Build.PL must be executed 
 #
 $config{'configure_requires_href'} = {              # basic distribution requirements for configuration (ie, requirements needed to run `perl Build.PL`); ref: https://www.socialtext.net/perl5/configure_requires [@2011.04.15.2129@ http://www.webcitation.org/5xydysS2l ]
     'perl' => '5.6.1',
-    'Module::Build' => '0',
+    'Module::Build' => '0.421',                             ## Module::Build v0.421+ required to avoid META.json / META.yml deletion bug during `perl Build.PL` (can be seen in StrawberryPerl v5.14.4.1 and v5.16.3.1 distrubutions)
     'version' => '0.77',                                    ## version v0.77+ needed for v5.10+ extended version support & declare->()
     # Build.PL
     'Cwd' => '0',
@@ -1389,8 +1389,13 @@ $code{'ACTION_sign@_sign_dir'} = q{
     sub _sign_dir {
         my ($self, $dir) = @_;
 
+        if (($ENV{AUTOMATED_TESTING} or $ENV{CI}) and (not $ENV{AUTOMATED_SIGNATURE})) {
+            $self->log_warn("Automated and/or CI testing detected; signing is disabled [to enable: set AUTOMATED_SIGNATURE]\n");
+            return;
+            }
+
         unless (eval { require Module::Signature; 1 }) {
-            $self->log_warn("Missing Module::Signature; unable to sign the distribution\n");
+            $self->log_warn("Missing required Module::Signature; unable to sign the distribution\n");
             return;
             }
 
@@ -1424,6 +1429,12 @@ $code{'ACTION_sign'} = q{
     #[ADD] NEW action = sign - sign current module content
     sub ACTION_sign {
         my ($self) = @_;
+
+        if (($ENV{AUTOMATED_TESTING} or $ENV{CI}) and (not $ENV{AUTOMATED_SIGNATURE})) {
+            $self->log_warn("Automated and/or CI testing detected; signing is disabled [to enable: set AUTOMATED_SIGNATURE]\n");
+            return;
+            }
+
         # from: ACTION_distsign
         #{
         #local $self->{properties}{sign} = 0;  # We'll sign it ourselves
