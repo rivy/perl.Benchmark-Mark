@@ -1,4 +1,4 @@
-## no critic ( Documentation::RequirePodAtEnd Documentation::RequirePodSections )
+## no critic ( CodeLayout::RequireTidyCode Documentation::RequirePodAtEnd Documentation::RequirePodSections )
 #(emacs/sublime) -*- mode: perl; tab-width: 4; -*-
 # Benchmark::Mark 0.001_1 ("lib/Benchmark/Mark.pm" from "PL.#no-dist/lib/Benchmark/Mark.pm.PL")
 
